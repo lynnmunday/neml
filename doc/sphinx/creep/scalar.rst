@@ -18,12 +18,14 @@ Implementations
 ---------------
 
 .. toctree::
-
+   
+   s_sum
    s_power
    s_km
    s_norton
    s_mukherjee
    s_generic
+   s_blackburn
 
 Class description
 -----------------
