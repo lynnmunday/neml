@@ -1022,7 +1022,8 @@ int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, 
   std::copy(s_np1, s_np1+6, df);
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
   for (int i=0; i<3; i++) df[i] -= sm;
-  for (int i=0; i<6; i++) df[i] *= (3.0 * s0 / (2.0 * sev) * pow(sev, s0 - 1.0) * pow(S0*(1 - d_np1), -(s0 - 2)));
+  for (int i=0; i<6; i++) df[i] *= (3.0 * s0 / (2.0 * sev) * pow(sev, s0 - 1.0) *
+                                    pow(S0*(1 - d_np1), -s0) );
 
   return 0;
 }
