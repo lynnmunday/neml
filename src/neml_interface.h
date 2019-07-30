@@ -4,6 +4,7 @@
 #include "nemlerror.h"
 #include "models.h"
 #include "nemlmath.h"
+#include "singlecrystal.h"
 
 namespace neml {
 std::unique_ptr<NEMLModel> parse_xml_unique(std::string fname, std::string mname);
