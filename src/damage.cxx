@@ -987,13 +987,18 @@ std::unique_ptr<NEMLObject> NEMLFatigueDamagedModel_sd::initialize(ParameterSet 
 int NEMLFatigueDamagedModel_sd::f(const double * const s_np1, double d_np1,
                                 double T_np1, double & f) const
 {
+  double nu = elastic_->nu(300.0); // some point I need to put in temperature
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0 ;
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
 
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0 * pow((1 - d_np1),2);
+
   if (sev > sl) {
-  f = pow(sev/((1 - d_np1)*S0), s0);
+  f = pow(numerator/denominator, s0);
   }
   else {
     f = 0;
@@ -1004,10 +1009,15 @@ int NEMLFatigueDamagedModel_sd::f(const double * const s_np1, double d_np1,
 int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, double T_np1,
                                  double * const df) const
 {
+  double nu = elastic_->nu(300.0);
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0 * pow((1 - d_np1),2);
 
   if (sev == 0.0 ) {
     std::fill(df, df+6, 0.0);
@@ -1019,11 +1029,14 @@ int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, 
     return 0;
   }
 
+  double firstTerm = pow(denominator, -s0);
+  double secondTerm = s0 * pow(numerator,s0 - 1);
   std::copy(s_np1, s_np1+6, df);
-  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
-  for (int i=0; i<3; i++) df[i] -= sm;
-  for (int i=0; i<6; i++) df[i] *= (3.0 * s0 / (2.0 * sev) * pow(sev, s0 - 1.0) *
-                                    pow(S0*(1 - d_np1), -s0) );
+
+  for (int i=0; i<6; i++) {
+    if (i < 3) df[i] = firstTerm * secondTerm * ( 2*(1+nu)*(df[i] - sm) + 2*(1-2*nu)*sm ) ;
+    else df[i] = firstTerm * secondTerm * (2*(1+nu)*df[i]);
+  }
 
   return 0;
 }
@@ -1031,12 +1044,21 @@ int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, 
 int NEMLFatigueDamagedModel_sd::df_dd(const double * const s_np1, double d_np1, double T_np1,
                                  double & df) const
 {
+  double nu = elastic_->nu(300.0);
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0;
+
+  double firstTerm = pow(numerator/denominator,s0);
+  double secondTerm = 2*s0 * pow((1-d_np1), -(2*s0 + 1) );
+
   if (sev > sl){
-    df = pow(sev/S0,s0) * s0 * pow(1-d_np1, -(s0 + 1) );
+    df = firstTerm * secondTerm ;
   }
   else {
     df = 0.0;

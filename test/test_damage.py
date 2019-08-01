@@ -297,7 +297,7 @@ class TestPowerLawDamage(unittest.TestCase, CommonStandardDamageModel,
     f_calcd = self.A * self.effective(self.stress) ** self.a
     self.assertTrue(np.isclose(f_model, f_calcd))
 
-class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel, 
+class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     CommonScalarDamageModel, CommonDamagedModel):
   def setUp(self):
     self.E = 92000.0
@@ -320,9 +320,9 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     self.bmodel = models.SmallStrainRateIndependentPlasticity(self.elastic,
         flow)
 
-    self.dmg_S0 = self.E * 10.0
+    self.dmg_S0 = self.E * 3
     self.dmg_s0 = 2.0
-    self.dmg_sl = 20.0
+    self.dmg_sl = 200.0
 
     self.model = damage.NEMLFatigueDamagedModel_sd(self.elastic,
         self.dmg_S0, self.dmg_s0, self.dmg_sl, self.bmodel)
@@ -361,8 +361,12 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
   def test_function(self):
     f_model = self.model.f(self.stress, self.d_np1, self.T)
     sev = self.effective(self.stress)
+    sm = (self.stress[0] + self.stress[1] + self.stress[2]) / 3.0
+    numerator = numerator = ((2/3.0) * (1 + self.nu) * sev**2 ) + (3 * (1 - 2*self.nu) * sm **2)
+    denominator = 2 * self.dmg_S0 * (1 - self.d_np1)**2
+
     if sev > self.dmg_sl:
-      f_calcd = (sev / (self.dmg_S0*(1.0 - self.d_np1)))**self.dmg_s0
+      f_calcd = (numerator/denominator)**self.dmg_s0
     else:
       f_calcd = 0.0
 
