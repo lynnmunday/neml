@@ -997,7 +997,9 @@ int NEMLFatigueDamagedModel_sd::f(const double * const s_np1, double d_np1,
   double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
   double denominator = 2 * S0 * pow((1 - d_np1),2);
 
-  if (sev > sl) {
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
+
+  if (check > sl) {
   f = pow(numerator/denominator, s0);
   }
   else {
@@ -1018,27 +1020,30 @@ int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, 
 
   double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
   double denominator = 2 * S0 * pow((1 - d_np1),2);
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
 
   if (sev == 0.0 ) {
     std::fill(df, df+6, 0.0);
     return 0;
   }
 
-  if (sev <= sl) {
+  else if (check <= sl) {
     std::fill(df, df+6, 0.0);
     return 0;
   }
 
-  double firstTerm = pow(denominator, -s0);
-  double secondTerm = s0 * pow(numerator,s0 - 1);
-  std::copy(s_np1, s_np1+6, df);
+  else{
+    double firstTerm = pow(denominator, -s0);
+    double secondTerm = s0 * pow(numerator,s0 - 1);
+    std::copy(s_np1, s_np1+6, df);
 
-  for (int i=0; i<6; i++) {
-    if (i < 3) df[i] = firstTerm * secondTerm * ( 2*(1+nu)*(df[i] - sm) + 2*(1-2*nu)*sm ) ;
-    else df[i] = firstTerm * secondTerm * (2*(1+nu)*df[i]);
+    for (int i=0; i<6; i++) {
+      if (i < 3) df[i] = firstTerm * secondTerm * ( 2*(1+nu)*(df[i] - sm) + 2*(1-2*nu)*sm ) ;
+      else df[i] = firstTerm * secondTerm * (2*(1+nu)*df[i]);
+    }
+    return 0;
   }
 
-  return 0;
 }
 
 int NEMLFatigueDamagedModel_sd::df_dd(const double * const s_np1, double d_np1, double T_np1,
@@ -1057,7 +1062,8 @@ int NEMLFatigueDamagedModel_sd::df_dd(const double * const s_np1, double d_np1, 
   double firstTerm = pow(numerator/denominator,s0);
   double secondTerm = 2*s0 * pow((1-d_np1), -(2*s0 + 1) );
 
-  if (sev > sl){
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
+  if (check > sl){
     df = firstTerm * secondTerm ;
   }
   else {
