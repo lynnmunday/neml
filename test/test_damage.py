@@ -320,9 +320,9 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     self.bmodel = models.SmallStrainRateIndependentPlasticity(self.elastic,
         flow)
 
-    self.dmg_S0 = self.E * 3
-    self.dmg_s0 = 2.0
-    self.dmg_sl = 200.0
+    self.dmg_S0 = self.E * 6.0
+    self.dmg_s0 = 1.5
+    self.dmg_sl = 140.0
 
     self.model = damage.NEMLFatigueDamagedModel_sd(self.elastic,
         self.dmg_S0, self.dmg_s0, self.dmg_sl, self.bmodel)
@@ -334,8 +334,8 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     self.s_np1 = self.stress
     self.s_n = np.array([-25,150,250,-25,-100,25])
 
-    self.d_np1 = 0.5
-    self.d_n = 0.4
+    self.d_np1 = 0.3
+    self.d_n = 0.2
 
     self.e_np1 = np.array([0.1,-0.01,0.15,-0.05,-0.1,0.15])
     self.e_n = np.array([-0.05,0.025,-0.1,0.2,0.11,0.13])
@@ -362,10 +362,11 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     f_model = self.model.f(self.stress, self.d_np1, self.T)
     sev = self.effective(self.stress)
     sm = (self.stress[0] + self.stress[1] + self.stress[2]) / 3.0
-    numerator = numerator = ((2/3.0) * (1 + self.nu) * sev**2 ) + (3 * (1 - 2*self.nu) * sm **2)
+    numerator = ((2/3.0) * (1 + self.nu) * sev**2 ) + (3 * (1 - 2*self.nu) * sm **2)
     denominator = 2 * self.dmg_S0 * (1 - self.d_np1)**2
+    check = (sev/(1 - self.d_np1)) * ( ((2/3.)*(1 + self.nu)) + ( 3 * (1 - 2*self.nu) * (sm/sev)**2 ) );
 
-    if sev > self.dmg_sl:
+    if check > self.dmg_sl:
       f_calcd = (numerator/denominator)**self.dmg_s0
     else:
       f_calcd = 0.0
