@@ -448,6 +448,87 @@ class NEMLFatigueDamagedModel_sd: public NEMLStandardScalarDamagedModel_sd {
 
 static Register<NEMLFatigueDamagedModel_sd> regNEMLFatigueDamagedModel_sd;
 
+/// Combined classical and fatigue model
+class CombinedFatigueDamageModel_sd: public NEMLScalarDamagedModel_sd {
+ public:
+  /// Parameters are the elastic model, the parameters A, xi, phi, S0, s0, sl,
+  /// the base model, the CTE, the solver tolerance, maximum iterations,
+  /// and the verbosity flag.
+  CombinedFatigueDamageModel_sd(
+                            std::shared_ptr<LinearElasticModel> elastic,
+                            std::shared_ptr<Interpolate> A,
+                            std::shared_ptr<Interpolate> xi,
+                            std::shared_ptr<Interpolate> phi,
+                            std::shared_ptr<Interpolate> S0,
+                            std::shared_ptr<Interpolate> s0,
+                            std::shared_ptr<Interpolate> sl,
+                            std::shared_ptr<NEMLModel_sd> base,
+                            std::shared_ptr<Interpolate> alpha,
+                            double tol, int miter,
+                            bool verbose, bool truesdell);
+
+  /// String type for the object system
+  static std::string type();
+  /// Return the default parameters
+  static ParameterSet parameters();
+  /// Initialize from a parameter set
+  static std::unique_ptr<NEMLObject> initialize(ParameterSet & params);
+
+  /// The damage function d_np1 = d_n + (se / A)**xi (1 - d_np1)**(-phi) * dt
+  virtual int damage(double d_np1, double d_n,
+                     const double * const e_np1, const double * const e_n,
+                     const double * const s_np1, const double * const s_n,
+                     double T_np1, double T_n,
+                     double t_np1, double t_n,
+                     double * const dd) const;
+  /// Derivative of damage wrt damage
+  virtual int ddamage_dd(double d_np1, double d_n,
+                     const double * const e_np1, const double * const e_n,
+                     const double * const s_np1, const double * const s_n,
+                     double T_np1, double T_n,
+                     double t_np1, double t_n,
+                     double * const dd) const;
+  /// Derivative of damage wrt strain
+  virtual int ddamage_de(double d_np1, double d_n,
+                     const double * const e_np1, const double * const e_n,
+                     const double * const s_np1, const double * const s_n,
+                     double T_np1, double T_n,
+                     double t_np1, double t_n,
+                     double * const dd) const;
+  /// Derivative of damage wrt stress
+  virtual int ddamage_ds(double d_np1, double d_n,
+                     const double * const e_np1, const double * const e_n,
+                     const double * const s_np1, const double * const s_n,
+                     double T_np1, double T_n,
+                     double t_np1, double t_n,
+                     double * const dd) const;
+
+ protected:
+   double dep(const double * const s_np1, const double * const s_n,
+              const double * const e_np1, const double * const e_n,
+              double T_np1) const;
+
+   int f(const double * const s_np1, double d_np1,
+                double T_np1, double & f) const;
+  /// Derivative of f wrt damage
+   int df_dd(const double * const s_np1, double d_np1, double T_np1,
+                double & df) const;
+  /// Derivative of f wrt stress
+   int df_ds(const double * const s_np1, double d_np1, double T_np1,
+                double * const df) const;
+   double se(const double * const s) const;
+
+ protected:
+  std::shared_ptr<Interpolate> A_;
+  std::shared_ptr<Interpolate> xi_;
+  std::shared_ptr<Interpolate> phi_;
+  std::shared_ptr<Interpolate> S0_;
+  std::shared_ptr<Interpolate> s0_;
+  std::shared_ptr<Interpolate> sl_;
+};
+
+static Register<CombinedFatigueDamageModel_sd> regCombinedFatigueDamageModel_sd;
+
 } //namespace neml
 
 #endif // DAMAGE_H

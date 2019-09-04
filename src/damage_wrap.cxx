@@ -172,6 +172,18 @@ PYBIND11_MODULE(damage, m) {
         }))
       ;
 
+  py::class_<CombinedFatigueDamageModel_sd, NEMLScalarDamagedModel_sd, std::shared_ptr<CombinedFatigueDamageModel_sd>>(m, "CombinedFatigueDamageModel_sd")
+  .def(py::init([](py::args args, py::kwargs kwargs)
+        {
+          return create_object_python<CombinedFatigueDamageModel_sd>(args, kwargs,
+                                                                    {"elastic",
+                                                                    "A", "xi",
+                                                                    "phi",
+                                                                    "S0", "s0","sl",
+                                                                    "base"});
+        }))
+      ;
+
 }
 
 } //  namespace neml

@@ -1079,4 +1079,367 @@ double NEMLFatigueDamagedModel_sd::se(const double * const s) const
                                               pow(s[5], 2.0))) / 2.0);
 }
 
+CombinedFatigueDamageModel_sd::CombinedFatigueDamageModel_sd(
+    std::shared_ptr<LinearElasticModel> elastic,
+    std::shared_ptr<Interpolate> A,
+    std::shared_ptr<Interpolate> xi,
+    std::shared_ptr<Interpolate> phi,
+    std::shared_ptr<Interpolate> S0,
+    std::shared_ptr<Interpolate> s0,
+    std::shared_ptr<Interpolate> sl,
+    std::shared_ptr<NEMLModel_sd> base,
+    std::shared_ptr<Interpolate> alpha,
+    double tol, int miter,
+    bool verbose, bool truesdell) :
+      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell),
+      A_(A), xi_(xi), phi_(phi),S0_(S0), s0_(s0), sl_(sl)
+{
+
+
+}
+
+std::string CombinedFatigueDamageModel_sd::type()
+{
+  return "CombinedFatigueDamageModel_sd";
+}
+
+ParameterSet CombinedFatigueDamageModel_sd::parameters()
+{
+  ParameterSet pset(CombinedFatigueDamageModel_sd::type());
+
+  pset.add_parameter<NEMLObject>("elastic");
+  pset.add_parameter<NEMLObject>("A");
+  pset.add_parameter<NEMLObject>("xi");
+  pset.add_parameter<NEMLObject>("phi");
+  pset.add_parameter<NEMLObject>("S0");
+  pset.add_parameter<NEMLObject>("s0");
+  pset.add_parameter<NEMLObject>("sl");
+  pset.add_parameter<NEMLObject>("base");
+
+  pset.add_optional_parameter<NEMLObject>("alpha",
+                                          std::make_shared<ConstantInterpolate>(0.0));
+  pset.add_optional_parameter<double>("tol", 1.0e-8);
+  pset.add_optional_parameter<int>("miter", 50);
+  pset.add_optional_parameter<bool>("verbose", false);
+  pset.add_optional_parameter<bool>("truesdell", true);
+
+  return pset;
+}
+
+std::unique_ptr<NEMLObject> CombinedFatigueDamageModel_sd::initialize(ParameterSet & params)
+{
+  return neml::make_unique<CombinedFatigueDamageModel_sd>(
+      params.get_object_parameter<LinearElasticModel>("elastic"),
+      params.get_object_parameter<Interpolate>("A"),
+      params.get_object_parameter<Interpolate>("xi"),
+      params.get_object_parameter<Interpolate>("phi"),
+      params.get_object_parameter<Interpolate>("S0"),
+      params.get_object_parameter<Interpolate>("s0"),
+      params.get_object_parameter<Interpolate>("sl"),
+      params.get_object_parameter<NEMLModel_sd>("base"),
+      params.get_object_parameter<Interpolate>("alpha"),
+      params.get_parameter<double>("tol"),
+      params.get_parameter<int>("miter"),
+      params.get_parameter<bool>("verbose"),
+      params.get_parameter<bool>("truesdell")
+      );
+}
+
+int CombinedFatigueDamageModel_sd::damage(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double xi = xi_->value(T_np1);
+  double A = A_->value(T_np1);
+  double phi = phi_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+
+  double fval;
+  int ier = f(s_np1, d_np1, T_np1, fval);
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+
+  *dd = d_n + pow(se / A, xi) * pow(1.0 - d_np1, -phi) * dt + (fval * deps);
+
+  return 0;
+}
+
+int CombinedFatigueDamageModel_sd::ddamage_dd(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double xi = xi_->value(T_np1);
+  double A = A_->value(T_np1);
+  double phi = phi_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+
+  double df;
+  int ier = df_dd(s_np1, d_np1, T_np1, df);
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+
+  *dd = pow(se / A, xi) * phi * pow(1.0 - d_np1, -(phi + 1.0)) * dt + (df * deps);
+
+  return 0;
+}
+
+int CombinedFatigueDamageModel_sd::ddamage_de(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  // Applicable only to the second term
+  double fval;
+  int ier = f(s_np1, d_np1, T_np1, fval);
+  if (ier != SUCCESS) return ier;
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+
+  if (deps == 0.0) {
+    std::fill(dd, dd+6, 0.0);
+    return 0;
+  }
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  double S[36];
+  ier = elastic_->S(T_np1, S);
+  if (ier != SUCCESS) return ier;
+
+  double dee[36];
+  ier = mat_vec(S, 6, ds, 6, dee);
+  if (ier != SUCCESS) return ier;
+
+  for (int i=0; i<6; i++) {
+    dd[i] = (2.0 * fval) / (3.0 * deps) * (de[i] - dee[i]);
+  }
+
+  return 0;
+}
+
+int CombinedFatigueDamageModel_sd::ddamage_ds(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double xi = xi_->value(T_np1);
+  double A = A_->value(T_np1);
+  double phi = phi_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+
+  double dd_first[6];
+  double dd_second[6];
+
+// strain rate independent first term
+  if (se == 0.0) {
+    std::fill(dd_first, dd_first+6, 0.0);
+    return 0;
+  }
+
+  std::copy(s_np1, s_np1+6, dd_first);
+  double s_m = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+  for (int i=0; i<3; i++) dd_first[i] -= s_m;
+
+  double sf = 3.0 * xi / (2.0 * A * se) * pow(se/A, xi - 1.0) *
+      pow(1 - d_np1, -phi) * dt;
+  for (int i=0; i<6; i++) dd_first[i] *= sf;
+
+// dot eps part
+  double fval;
+  int ier = f(s_np1, d_np1, T_np1, fval);
+  if (ier != SUCCESS) return ier;
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+
+  if (deps == 0.0) {
+    std::fill(dd_second, dd_second+6, 0.0);
+    return 0;
+  }
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  double S[36];
+  ier = elastic_->S(T_np1, S);
+  if (ier != SUCCESS) return ier;
+
+  double dee[36];
+  ier = mat_vec(S, 6, ds, 6, dee);
+  if (ier != SUCCESS) return ier;
+
+  double v1[6];
+  for (int i=0; i<6; i++) {
+    v1[i] = (2.0 * fval) / (3.0 * deps) * (dee[i] - de[i]);
+  }
+
+  ier = mat_vec(S, 6, v1, 6, dd_second);
+  if (ier != SUCCESS) return ier;
+
+  double dds[6];
+  ier = df_ds(s_np1, d_np1, T_np1, dds);
+  if (ier != SUCCESS) return ier;
+
+  for (int i=0; i<6; i++) {
+    dd_second[i] = dds[i] * deps + dd_second[i];
+  }
+
+  for (int i=0; i<6; i++) {
+    dd[i] = dd_first[i] + dd_second[i];
+  }
+  return 0;
+}
+
+double CombinedFatigueDamageModel_sd::dep(
+    const double * const s_np1, const double * const s_n,
+    const double * const e_np1, const double * const e_n,
+    double T_np1) const
+{
+  double S[36];
+  elastic_->S(T_np1, S);
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  double dee[36];
+  mat_vec(S, 6, ds, 6, dee);
+
+  double val_sq =  2.0/3.0 * (dot_vec(de, de, 6) + dot_vec(dee, dee, 6) -
+                         2.0 * dot_vec(de, dee, 6));
+
+  if (val_sq < 0.0) {
+    return 0.0;
+  }
+  else {
+    return sqrt(val_sq);
+  }
+}
+
+int CombinedFatigueDamageModel_sd::f(const double * const s_np1, double d_np1,
+                                double T_np1, double & f) const
+{
+
+  double S0 = S0_->value(T_np1);
+  double s0 = s0_->value(T_np1);
+  double sl = sl_->value(T_np1);
+
+  double nu = elastic_->nu(300.0); // some point I need to put in temperature
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0 ;
+  double sev = se(s_np1);
+
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0 * pow((1 - d_np1),2);
+
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
+
+  if (check > sl) {
+  f = pow(numerator/denominator, s0);
+  }
+  else {
+    f = 0;
+  }
+  return 0;
+}
+
+int CombinedFatigueDamageModel_sd::df_dd(const double * const s_np1, double d_np1, double T_np1,
+                                 double & df) const
+{
+  double S0 = S0_->value(T_np1);
+  double s0 = s0_->value(T_np1);
+  double sl = sl_->value(T_np1);
+
+  double nu = elastic_->nu(300.0);
+  double sev = se(s_np1);
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0;
+
+  double firstTerm = pow(numerator/denominator,s0);
+  double secondTerm = 2*s0 * pow((1-d_np1), -(2*s0 + 1) );
+
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
+  if (check > sl){
+    df = firstTerm * secondTerm ;
+  }
+  else {
+    df = 0.0;
+  }
+  return 0;
+}
+
+int CombinedFatigueDamageModel_sd::df_ds(const double * const s_np1, double d_np1, double T_np1,
+                                 double * const df) const
+{
+  double S0 = S0_->value(T_np1);
+  double s0 = s0_->value(T_np1);
+  double sl = sl_->value(T_np1);
+
+  double nu = elastic_->nu(300.0);
+  double sev = se(s_np1);
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+
+  double numerator = ((2/3.0) * (1 + nu) * pow(sev,2)) + (3 * (1 - 2*nu) * pow(sm,2));
+  double denominator = 2 * S0 * pow((1 - d_np1),2);
+  double check = (sev/(1 - d_np1)) * ( (2/3.)*(1 + nu) + (3 * (1 - 2*nu) * pow(sm/sev,2)) );
+
+  if (sev == 0.0 ) {
+    std::fill(df, df+6, 0.0);
+    return 0;
+  }
+
+  else if (check <= sl) {
+    std::fill(df, df+6, 0.0);
+    return 0;
+  }
+
+  else{
+    double firstTerm = pow(denominator, -s0);
+    double secondTerm = s0 * pow(numerator,s0 - 1);
+    std::copy(s_np1, s_np1+6, df);
+
+    for (int i=0; i<6; i++) {
+      if (i < 3) df[i] = firstTerm * secondTerm * ( 2*(1+nu)*(df[i] - sm) + 2*(1-2*nu)*sm ) ;
+      else df[i] = firstTerm * secondTerm * (2*(1+nu)*df[i]);
+    }
+    return 0;
+  }
+
+}
+
+double CombinedFatigueDamageModel_sd::se(const double * const s) const
+{
+  return sqrt((pow(s[0]-s[1], 2.0) + pow(s[1] - s[2], 2.0) +
+               pow(s[2] - s[0], 2.0) + 3.0 * (pow(s[3], 2.0) + pow(s[4], 2.0) +
+                                              pow(s[5], 2.0))) / 2.0);
+}
+
 }
