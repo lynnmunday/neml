@@ -1092,7 +1092,7 @@ CombinedFatigueDamageModel_sd::CombinedFatigueDamageModel_sd(
     double tol, int miter,
     bool verbose, bool truesdell) :
       NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell),
-      A_(A), xi_(xi), phi_(phi),S0_(S0), s0_(s0), sl_(sl)
+      A_(A), xi_(xi), phi_(phi), S0_(S0), s0_(s0), sl_(sl)
 {
 
 
@@ -1163,7 +1163,9 @@ int CombinedFatigueDamageModel_sd::damage(
   double fval;
   int ier = f(s_np1, d_np1, T_np1, fval);
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
-
+  if (isnan(deps)){
+    deps = 0.0;
+  }
   *dd = d_n + pow(se / A, xi) * pow(1.0 - d_np1, -phi) * dt + (fval * deps);
 
   return 0;
@@ -1187,6 +1189,9 @@ int CombinedFatigueDamageModel_sd::ddamage_dd(
   double df;
   int ier = df_dd(s_np1, d_np1, T_np1, df);
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
 
   *dd = pow(se / A, xi) * phi * pow(1.0 - d_np1, -(phi + 1.0)) * dt + (df * deps);
 
@@ -1206,6 +1211,9 @@ int CombinedFatigueDamageModel_sd::ddamage_de(
   int ier = f(s_np1, d_np1, T_np1, fval);
   if (ier != SUCCESS) return ier;
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
 
   if (deps == 0.0) {
     std::fill(dd, dd+6, 0.0);
@@ -1271,7 +1279,9 @@ int CombinedFatigueDamageModel_sd::ddamage_ds(
   int ier = f(s_np1, d_np1, T_np1, fval);
   if (ier != SUCCESS) return ier;
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
-
+  if (isnan(deps)){
+    deps = 0.0;
+  }
   if (deps == 0.0) {
     std::fill(dd_second, dd_second+6, 0.0);
     return 0;
