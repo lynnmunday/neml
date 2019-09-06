@@ -184,6 +184,15 @@ PYBIND11_MODULE(damage, m) {
         }))
       ;
 
+      py::class_<DuctilityExhaustionDamage_sd, NEMLScalarDamagedModel_sd, std::shared_ptr<DuctilityExhaustionDamage_sd>>(m, "DuctilityExhaustionDamage_sd")
+      .def(py::init([](py::args args, py::kwargs kwargs)
+            {
+              return create_object_python<DuctilityExhaustionDamage_sd>(args, kwargs,
+                                                                        {"elastic",
+                                                                        "A","base"});
+            }))
+          ;
+
 }
 
 } //  namespace neml

@@ -689,7 +689,7 @@ double NEMLStandardScalarDamagedModel_sd::dep(
   double dee[36];
   mat_vec(S, 6, ds, 6, dee);
 
-  double val_sq =  2.0/3.0 * (dot_vec(de, de, 6) + dot_vec(dee, dee, 6) -
+  double val_sq =  2.0/3.0 * ( dot_vec(de, de, 6) + dot_vec(dee, dee, 6) -
                          2.0 * dot_vec(de, dee, 6));
 
   if (val_sq < 0.0) {
@@ -1451,5 +1451,270 @@ double CombinedFatigueDamageModel_sd::se(const double * const s) const
                pow(s[2] - s[0], 2.0) + 3.0 * (pow(s[3], 2.0) + pow(s[4], 2.0) +
                                               pow(s[5], 2.0))) / 2.0);
 }
+
+
+DuctilityExhaustionDamage_sd::DuctilityExhaustionDamage_sd(
+    std::shared_ptr<LinearElasticModel> elastic,
+    std::shared_ptr<Interpolate> A,
+    std::shared_ptr<NEMLModel_sd> base,
+    std::shared_ptr<Interpolate> alpha,
+    double tol, int miter,
+    bool verbose, bool truesdell) :
+      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell),
+      A_(A)
+{
+
+
+}
+
+std::string DuctilityExhaustionDamage_sd::type()
+{
+  return "DuctilityExhaustionDamage_sd";
+}
+
+ParameterSet DuctilityExhaustionDamage_sd::parameters()
+{
+  ParameterSet pset(DuctilityExhaustionDamage_sd::type());
+
+  pset.add_parameter<NEMLObject>("elastic");
+  pset.add_parameter<NEMLObject>("A");
+  pset.add_parameter<NEMLObject>("base");
+
+  pset.add_optional_parameter<NEMLObject>("alpha",
+                                          std::make_shared<ConstantInterpolate>(0.0));
+  pset.add_optional_parameter<double>("tol", 1.0e-8);
+  pset.add_optional_parameter<int>("miter", 50);
+  pset.add_optional_parameter<bool>("verbose", false);
+  pset.add_optional_parameter<bool>("truesdell", true);
+
+  return pset;
+}
+
+std::unique_ptr<NEMLObject> DuctilityExhaustionDamage_sd::initialize(ParameterSet & params)
+{
+  return neml::make_unique<DuctilityExhaustionDamage_sd>(
+      params.get_object_parameter<LinearElasticModel>("elastic"),
+      params.get_object_parameter<Interpolate>("A"),
+      params.get_object_parameter<NEMLModel_sd>("base"),
+      params.get_object_parameter<Interpolate>("alpha"),
+      params.get_parameter<double>("tol"),
+      params.get_parameter<int>("miter"),
+      params.get_parameter<bool>("verbose"),
+      params.get_parameter<bool>("truesdell")
+      );
+}
+
+int DuctilityExhaustionDamage_sd::damage(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double A = A_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
+  double work_rate = deps * se / (1 - d_np1);
+  double denominator = 1 + A * exp(-work_rate) ;
+  double fval = work_rate / denominator;
+  *dd = d_n + fval * dt ;
+
+  return 0;
+}
+
+int DuctilityExhaustionDamage_sd::ddamage_dd(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double A = A_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
+
+  double work_rate = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work_rate);
+  double firstTerm = 1 / ( 1 + exp_term);
+  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
+  double d_work_ddamage = se * deps / pow(1 - d_np1,2);
+
+  *dd = (firstTerm + secondTerm) * d_work_ddamage;
+
+  return 0;
+}
+
+int DuctilityExhaustionDamage_sd::ddamage_de(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+
+  double A = A_->value(T_np1);
+
+  double dt = t_np1 - t_n;
+  double se = this->se(s_np1);
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
+
+  if (deps == 0.0) {
+    std::fill(dd, dd+6, 0.0);
+    return 0;
+  }
+
+  double work_rate = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work_rate);
+  double firstTerm = 1 / ( 1 + exp_term);
+  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  int ier;
+  double S[36];
+  ier = elastic_->S(T_np1, S);
+  if (ier != SUCCESS) return ier;
+
+
+  double dee[36];
+  ier = mat_vec(S, 6, ds, 6, dee);
+  if (ier != SUCCESS) return ier;
+
+  double fval = (firstTerm + secondTerm) * se / (1 - d_np1);
+  for (int i=0; i<6; i++) {
+    dd[i] = (2.0 * fval) / (3.0 * deps) * (de[i] - dee[i]);
+  }
+
+  return 0;
+}
+
+int DuctilityExhaustionDamage_sd::ddamage_ds(
+    double d_np1, double d_n,
+    const double * const e_np1, const double * const e_n,
+    const double * const s_np1, const double * const s_n,
+    double T_np1, double T_n,
+    double t_np1, double t_n,
+    double * const dd) const
+{
+  double A = A_->value(T_np1);
+
+  double se = this->se(s_np1);
+  double dt = t_np1 - t_n;
+
+  double dd_first[6];
+  double dd_second[6];
+
+  if (se == 0.0) {
+    std::fill(dd, dd+6, 0.0);
+    return 0;
+  }
+
+
+  double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
+  if (isnan(deps)){
+    deps = 0.0;
+  }
+
+  double work_rate = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work_rate);
+  double firstTerm = 1 / ( 1 + exp_term);
+  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
+  double fval;
+  fval = (firstTerm + secondTerm );
+  double fval_1 = fval * se / (1 - d_np1);
+  double fval_2 = fval * deps / (1 - d_np1);
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  int ier;
+  double S[36];
+  ier = elastic_->S(T_np1, S);
+  if (ier != SUCCESS) return ier;
+
+  double dee[36];
+  ier = mat_vec(S, 6, ds, 6, dee);
+  if (ier != SUCCESS) return ier;
+
+  double v1[6];
+  for (int i=0; i<6; i++) {
+    v1[i] = (2.0 * fval_1) / (3.0 * deps) * (dee[i] - de[i]);
+  }
+  ier = mat_vec(S, 6, v1, 6, dd);
+  if (ier != SUCCESS) return ier;
+
+  double dse_ds[6];
+  std::copy(s_np1, s_np1+6, dse_ds);
+  double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
+  for (int i=0; i<3; i++) dse_ds[i] -= sm;
+  for (int i=0; i<6; i++) dse_ds[i] *= 3.0  / (2.0 * se);
+
+  for (int i=0; i<6; i++) {
+    dd[i] = dd[i] + fval_2 * dse_ds[i] ;
+  }
+  return 0;
+}
+
+double DuctilityExhaustionDamage_sd::dep(
+    const double * const s_np1, const double * const s_n,
+    const double * const e_np1, const double * const e_n,
+    double T_np1) const
+{
+  double S[36];
+  elastic_->S(T_np1, S);
+
+  double ds[6];
+  double de[6];
+  for (int i=0; i<6; i++) {
+    ds[i] = s_np1[i] - s_n[i];
+    de[i] = e_np1[i] - e_n[i];
+  }
+
+  double dee[36];
+  mat_vec(S, 6, ds, 6, dee);
+
+  double val_sq =  2.0/3.0 * (dot_vec(de, de, 6) + dot_vec(dee, dee, 6) -
+                         2.0 * dot_vec(de, dee, 6));
+
+  if (val_sq < 0.0) {
+    return 0.0;
+  }
+  else {
+    return sqrt(val_sq);
+  }
+}
+
+double DuctilityExhaustionDamage_sd::se(const double * const s) const
+{
+  return sqrt((pow(s[0]-s[1], 2.0) + pow(s[1] - s[2], 2.0) +
+               pow(s[2] - s[0], 2.0) + 3.0 * (pow(s[3], 2.0) + pow(s[4], 2.0) +
+                                              pow(s[5], 2.0))) / 2.0);
+}
+
 
 }
