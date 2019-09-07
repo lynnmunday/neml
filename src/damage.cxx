@@ -1162,6 +1162,7 @@ int CombinedFatigueDamageModel_sd::damage(
 
   double fval;
   int ier = f(s_np1, d_np1, T_np1, fval);
+  if (ier != SUCCESS) return ier;
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
   if (isnan(deps)){
     deps = 0.0;
@@ -1188,6 +1189,7 @@ int CombinedFatigueDamageModel_sd::ddamage_dd(
 
   double df;
   int ier = df_dd(s_np1, d_np1, T_np1, df);
+  if (ier != SUCCESS) return ier;
   double deps = dep(s_np1, s_n, e_np1, e_n, T_np1);
   if (isnan(deps)){
     deps = 0.0;
@@ -1520,10 +1522,10 @@ int DuctilityExhaustionDamage_sd::damage(
   if (isnan(deps)){
     deps = 0.0;
   }
-  double work_rate = deps * se / (1 - d_np1);
-  double denominator = 1 + A * exp(-work_rate) ;
-  double fval = work_rate / denominator;
-  *dd = d_n + fval * dt ;
+  double work = deps * se / (1 - d_np1);
+  double denominator = 1 + A * exp(-work/dt) ;
+  double fval = work / denominator;
+  *dd = d_n + fval  ;
 
   return 0;
 }
@@ -1545,13 +1547,13 @@ int DuctilityExhaustionDamage_sd::ddamage_dd(
     deps = 0.0;
   }
 
-  double work_rate = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work_rate);
+  double work = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work / dt);
   double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
-  double d_work_ddamage = se * deps / pow(1 - d_np1,2);
+  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
+  double dwork_ddamage = se * deps / pow(1 - d_np1,2);
 
-  *dd = (firstTerm + secondTerm) * d_work_ddamage;
+  *dd = (firstTerm + (secondTerm / dt)) * dwork_ddamage;
 
   return 0;
 }
@@ -1579,10 +1581,10 @@ int DuctilityExhaustionDamage_sd::ddamage_de(
     return 0;
   }
 
-  double work_rate = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work_rate);
+  double work = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work/dt);
   double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
+  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
 
   double ds[6];
   double de[6];
@@ -1601,9 +1603,10 @@ int DuctilityExhaustionDamage_sd::ddamage_de(
   ier = mat_vec(S, 6, ds, 6, dee);
   if (ier != SUCCESS) return ier;
 
-  double fval = (firstTerm + secondTerm) * se / (1 - d_np1);
+  double fval = (firstTerm + (secondTerm/dt) ) * se / (1 - d_np1);
+
   for (int i=0; i<6; i++) {
-    dd[i] = (2.0 * fval) / (3.0 * deps) * (de[i] - dee[i]);
+    dd[i] = (2.0 * fval / (3.0 * deps) ) * (de[i] - dee[i]);
   }
 
   return 0;
@@ -1622,9 +1625,6 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
 
-  double dd_first[6];
-  double dd_second[6];
-
   if (se == 0.0) {
     std::fill(dd, dd+6, 0.0);
     return 0;
@@ -1636,12 +1636,17 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
     deps = 0.0;
   }
 
-  double work_rate = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work_rate);
+  if (deps == 0.0) {
+    std::fill(dd, dd+6, 0.0);
+    return 0;
+  }
+
+  double work = se * deps / (1 - d_np1);
+  double exp_term = A * exp(-work/dt);
   double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work_rate * exp_term / pow(1 + exp_term, 2);
+  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
   double fval;
-  fval = (firstTerm + secondTerm );
+  fval = (firstTerm + (secondTerm/dt) );
   double fval_1 = fval * se / (1 - d_np1);
   double fval_2 = fval * deps / (1 - d_np1);
 
@@ -1661,9 +1666,10 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   ier = mat_vec(S, 6, ds, 6, dee);
   if (ier != SUCCESS) return ier;
 
+  // double fval_1 = A * se / ( 1 - d_np1);
   double v1[6];
   for (int i=0; i<6; i++) {
-    v1[i] = (2.0 * fval_1) / (3.0 * deps) * (dee[i] - de[i]);
+    v1[i] = (2.0 * fval_1 / (3.0 * deps) ) * (dee[i] - de[i]);
   }
   ier = mat_vec(S, 6, v1, 6, dd);
   if (ier != SUCCESS) return ier;
@@ -1671,11 +1677,12 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   double dse_ds[6];
   std::copy(s_np1, s_np1+6, dse_ds);
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
-  for (int i=0; i<3; i++) dse_ds[i] -= sm;
+  for (int i=0; i<3; i++) dse_ds[i] = s_np1[i] - sm;
   for (int i=0; i<6; i++) dse_ds[i] *= 3.0  / (2.0 * se);
 
+  // double fval_2 = A * deps / (1 - d_np1);
   for (int i=0; i<6; i++) {
-    dd[i] = dd[i] + fval_2 * dse_ds[i] ;
+    dd[i] = dd[i] + (fval_2 * dse_ds[i]) ;
   }
   return 0;
 }
