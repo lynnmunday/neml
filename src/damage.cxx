@@ -1458,12 +1458,14 @@ double CombinedFatigueDamageModel_sd::se(const double * const s) const
 DuctilityExhaustionDamage_sd::DuctilityExhaustionDamage_sd(
     std::shared_ptr<LinearElasticModel> elastic,
     std::shared_ptr<Interpolate> A,
+    std::shared_ptr<Interpolate> P,
+    std::shared_ptr<Interpolate> ksi,
     std::shared_ptr<NEMLModel_sd> base,
     std::shared_ptr<Interpolate> alpha,
     double tol, int miter,
     bool verbose, bool truesdell) :
       NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell),
-      A_(A)
+      A_(A), P_(P), ksi_(ksi)
 {
 
 
@@ -1480,6 +1482,8 @@ ParameterSet DuctilityExhaustionDamage_sd::parameters()
 
   pset.add_parameter<NEMLObject>("elastic");
   pset.add_parameter<NEMLObject>("A");
+  pset.add_parameter<NEMLObject>("P");
+  pset.add_parameter<NEMLObject>("ksi");
   pset.add_parameter<NEMLObject>("base");
 
   pset.add_optional_parameter<NEMLObject>("alpha",
@@ -1497,6 +1501,8 @@ std::unique_ptr<NEMLObject> DuctilityExhaustionDamage_sd::initialize(ParameterSe
   return neml::make_unique<DuctilityExhaustionDamage_sd>(
       params.get_object_parameter<LinearElasticModel>("elastic"),
       params.get_object_parameter<Interpolate>("A"),
+      params.get_object_parameter<Interpolate>("P"),
+      params.get_object_parameter<Interpolate>("ksi"),
       params.get_object_parameter<NEMLModel_sd>("base"),
       params.get_object_parameter<Interpolate>("alpha"),
       params.get_parameter<double>("tol"),
@@ -1515,6 +1521,8 @@ int DuctilityExhaustionDamage_sd::damage(
     double * const dd) const
 {
   double A = A_->value(T_np1);
+  double P = P_->value(T_np1);
+  double ksi = ksi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -1523,9 +1531,9 @@ int DuctilityExhaustionDamage_sd::damage(
     deps = 0.0;
   }
   double work = deps * se / (1 - d_np1);
-  double denominator = 1 + A * exp(-work/dt) ;
+  double denominator = P + A * exp(-ksi * work/dt) ;
   double fval = work / denominator;
-  *dd = d_n + fval  ;
+  *dd = d_n + fval  ; // fval = w / (P + A exp(-ksi*dot{w}))
 
   return 0;
 }
@@ -1539,6 +1547,8 @@ int DuctilityExhaustionDamage_sd::ddamage_dd(
     double * const dd) const
 {
   double A = A_->value(T_np1);
+  double P = P_->value(T_np1);
+  double ksi = ksi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -1548,9 +1558,9 @@ int DuctilityExhaustionDamage_sd::ddamage_dd(
   }
 
   double work = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work / dt);
-  double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
+  double exp_term = A * exp(-ksi * work / dt);
+  double firstTerm = 1 / ( P + exp_term);
+  double secondTerm = work * ksi * exp_term / pow(P + exp_term, 2);
   double dwork_ddamage = se * deps / pow(1 - d_np1,2);
 
   *dd = (firstTerm + (secondTerm / dt)) * dwork_ddamage;
@@ -1568,6 +1578,8 @@ int DuctilityExhaustionDamage_sd::ddamage_de(
 {
 
   double A = A_->value(T_np1);
+  double P = P_->value(T_np1);
+  double ksi = ksi_->value(T_np1);
 
   double dt = t_np1 - t_n;
   double se = this->se(s_np1);
@@ -1582,9 +1594,9 @@ int DuctilityExhaustionDamage_sd::ddamage_de(
   }
 
   double work = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work/dt);
-  double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
+  double exp_term = A * exp(-ksi * work/dt);
+  double firstTerm = 1 / ( P + exp_term);
+  double secondTerm = work * ksi * exp_term / pow(P + exp_term, 2);
 
   double ds[6];
   double de[6];
@@ -1621,6 +1633,8 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
     double * const dd) const
 {
   double A = A_->value(T_np1);
+  double P = P_->value(T_np1);
+  double ksi = ksi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -1642,9 +1656,9 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   }
 
   double work = se * deps / (1 - d_np1);
-  double exp_term = A * exp(-work/dt);
-  double firstTerm = 1 / ( 1 + exp_term);
-  double secondTerm = work * exp_term / pow(1 + exp_term, 2);
+  double exp_term = A * exp(-ksi * work/dt);
+  double firstTerm = 1 / ( P + exp_term);
+  double secondTerm = work * ksi * exp_term / pow(P + exp_term, 2);
   double fval;
   fval = (firstTerm + (secondTerm/dt) );
   double fval_1 = fval * se / (1 - d_np1);
@@ -1666,7 +1680,6 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   ier = mat_vec(S, 6, ds, 6, dee);
   if (ier != SUCCESS) return ier;
 
-  // double fval_1 = A * se / ( 1 - d_np1);
   double v1[6];
   for (int i=0; i<6; i++) {
     v1[i] = (2.0 * fval_1 / (3.0 * deps) ) * (dee[i] - de[i]);
@@ -1680,7 +1693,6 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   for (int i=0; i<3; i++) dse_ds[i] = s_np1[i] - sm;
   for (int i=0; i<6; i++) dse_ds[i] *= 3.0  / (2.0 * se);
 
-  // double fval_2 = A * deps / (1 - d_np1);
   for (int i=0; i<6; i++) {
     dd[i] = dd[i] + (fval_2 * dse_ds[i]) ;
   }

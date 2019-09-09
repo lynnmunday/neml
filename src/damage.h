@@ -538,6 +538,8 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
   DuctilityExhaustionDamage_sd(
                             std::shared_ptr<LinearElasticModel> elastic,
                             std::shared_ptr<Interpolate> A,
+                            std::shared_ptr<Interpolate> P,
+                            std::shared_ptr<Interpolate> ksi,
                             std::shared_ptr<NEMLModel_sd> base,
                             std::shared_ptr<Interpolate> alpha,
                             double tol, int miter,
@@ -587,7 +589,9 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
    double se(const double * const s) const;
 
  protected:
-  std::shared_ptr<Interpolate> A_;
+   std::shared_ptr<Interpolate> A_;
+   std::shared_ptr<Interpolate> P_;
+   std::shared_ptr<Interpolate> ksi_;
 };
 
 static Register<DuctilityExhaustionDamage_sd> regDuctilityExhaustionDamage_sd;

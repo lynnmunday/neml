@@ -256,10 +256,12 @@ class TestDuctilityExhaustionDamage_sd(unittest.TestCase, CommonScalarDamageMode
         flow)
 
     self.A = 1e9
+    self.P = 1.0
+    self.ksi = 1.0
 
     self.model = damage.DuctilityExhaustionDamage_sd(
         self.elastic,
-        self.A, self.bmodel)
+        self.A, self.P, self.ksi, self.bmodel)
 
     self.stress = np.array([100,-50.0,300.0,-99,50.0,125.0])
     self.T = 100.0
