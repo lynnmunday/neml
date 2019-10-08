@@ -7,7 +7,7 @@ SingleCrystalModel::SingleCrystalModel(
     std::shared_ptr<Lattice> lattice,
     std::shared_ptr<Orientation> initial_angle,
     std::shared_ptr<Interpolate> alpha,
-    bool update_rotation, double tol, int miter, bool verbose, 
+    bool update_rotation, double tol, int miter, bool verbose,
     int max_divide) :
       kinematics_(kinematics), lattice_(lattice), q0_(initial_angle), alpha_(alpha),
       update_rotation_(update_rotation), tol_(tol), miter_(miter),
@@ -29,10 +29,10 @@ std::string SingleCrystalModel::type()
 ParameterSet SingleCrystalModel::parameters()
 {
   ParameterSet pset(SingleCrystalModel::type());
-  
+
   pset.add_parameter<NEMLObject>("kinematics");
   pset.add_parameter<NEMLObject>("lattice");
-  pset.add_optional_parameter<NEMLObject>("initial_rotation", 
+  pset.add_optional_parameter<NEMLObject>("initial_rotation",
                                           std::make_shared<Orientation>());
   pset.add_optional_parameter<NEMLObject>("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
@@ -89,7 +89,7 @@ int SingleCrystalModel::update_ld_inc(
   const Skew W_n(w_n);
 
   double dt = t_np1 - t_n;
-  
+
   // This is why I shouldn't do that this way
   Symmetric D;
   Skew W;
@@ -114,7 +114,7 @@ int SingleCrystalModel::update_ld_inc(
 
   History H_np1 = HF_np1.split({"rotation"});
   History H_n = HF_n.split({"rotation"});
-  
+
   /* Begin adaptive stepping */
   double dT = T_np1 - T_n;
   int progress = 0;
@@ -125,12 +125,12 @@ int SingleCrystalModel::update_ld_inc(
   // Use S_np1 and H_np1 to iterate
   S_np1.copy_data(S_n.data());
   H_np1.copy_data(H_n.rawptr());
-  
+
   while (progress < target) {
     double step = 1.0 / pow(2, subdiv);
 
     // Decouple the updates
-    History fixed = kinematics_->decouple(S_np1, D, W, Q_n, H_np1, 
+    History fixed = kinematics_->decouple(S_np1, D, W, Q_n, H_np1,
                                           local_lattice, T_n + dT * step);
 
     // Set the trial state
@@ -169,7 +169,7 @@ int SingleCrystalModel::update_ld_inc(
         std::cout << "Current progress " << progress << " out of " << target <<
             std::endl;
       }
-      
+
       // Calc tangent if we're going to be done
       if (progress == target) {
         // Tangent
@@ -190,9 +190,9 @@ int SingleCrystalModel::update_ld_inc(
 
   // Calculate the new energy
   u_np1 = u_n + calc_energy_inc_(D_np1, D_n, S_np1, S_n);
-  
+
   // Calculate the new dissipation
-  p_np1 = p_n + calc_work_inc_(D_np1, D_n, S_np1, S_n, T_np1, T_n, 
+  p_np1 = p_n + calc_work_inc_(D_np1, D_n, S_np1, S_n, T_np1, T_n,
                                HF_np1.get<Orientation>("rotation"), Q_n,
                                H_np1, H_n);
 
@@ -225,9 +225,9 @@ int SingleCrystalModel::elastic_strains(
   Symmetric stress(s_np1);
 
   const History h = gather_history_(h_np1);
-  
-  Symmetric estrain = kinematics_->elastic_strains(stress, 
-                                                   h.get<Orientation>("rotation"), 
+
+  Symmetric estrain = kinematics_->elastic_strains(stress,
+                                                   h.get<Orientation>("rotation"),
                                                    h, T_np1);
   std::copy(estrain.data(), estrain.data()+6, e_np1);
 
@@ -268,7 +268,7 @@ int SingleCrystalModel::RJ(const double * const x, TrialState * ts,
   History history_rate = kinematics_->history_rate(S, ats->d, ats->w, ats->Q,
                                                    H, ats->lattice, ats->T,
                                                    fixed);
-  
+
   // Stick in residual
   std::copy(stress_res.data(), stress_res.data()+6, R);
   for (size_t i = 0; i < H.size(); i++) {
@@ -322,6 +322,14 @@ int SingleCrystalModel::RJ(const double * const x, TrialState * ts,
   }
 
   return 0;
+}
+
+double SingleCrystalModel::get_current_strength(
+  double * const hist) const
+{
+  History h = gather_history_(hist);
+  double strength = h.get<double>("strength");
+  return strength;
 }
 
 Orientation SingleCrystalModel::get_active_orientation(
@@ -412,7 +420,7 @@ void SingleCrystalModel::calc_tangents_(Symmetric & S, History & H,
   // Get the jacobian contributions
   double * R = new double[nparams()];
   double * J = new double[nparams()*nparams()];
-  
+
   RJ(x, ts, R, J);
 
   size_t nh = nparams() - 6;
@@ -433,7 +441,7 @@ void SingleCrystalModel::calc_tangents_(Symmetric & S, History & H,
       J12[CINDEX(i,j,nh)] = J[CINDEX(i,j+6,nparams())];
     }
   }
- 
+
   for (size_t i=0; i<nh; i++) {
     for (size_t j=0; j<6; j++) {
       J21[CINDEX(i,j,6)] = J[CINDEX(i+6,j,nparams())];
@@ -473,16 +481,16 @@ void SingleCrystalModel::calc_tangents_(Symmetric & S, History & H,
   delete [] J12;
   delete [] J21;
   delete [] J22;
-  
+
   // Do D
   History & fixed = ts->fixed;
   // Get the extra matrices
-  SymSym sd = kinematics_->d_stress_rate_d_d(S, ts->d, ts->w, ts->Q, 
-                                             H, ts->lattice, ts->T, fixed) 
+  SymSym sd = kinematics_->d_stress_rate_d_d(S, ts->d, ts->w, ts->Q,
+                                             H, ts->lattice, ts->T, fixed)
       + kinematics_->d_stress_rate_d_d_decouple(S, ts->d, ts->w,
                                                 ts->Q, H,
                                                 ts->lattice, ts->T, fixed);
-  History hd = kinematics_->d_history_rate_d_d(S, ts->d, ts->w, ts->Q, 
+  History hd = kinematics_->d_history_rate_d_d(S, ts->d, ts->w, ts->Q,
                                              H, ts->lattice, ts->T, fixed);
   hd += kinematics_->d_history_rate_d_d_decouple(S, ts->d, ts->w,
                                                 ts->Q, H,
@@ -501,13 +509,13 @@ void SingleCrystalModel::calc_tangents_(Symmetric & S, History & H,
   delete [] I1;
 
   // Do W
-  SymSkew sw = kinematics_->d_stress_rate_d_w(S, ts->d, ts->w, ts->Q, 
+  SymSkew sw = kinematics_->d_stress_rate_d_w(S, ts->d, ts->w, ts->Q,
                                              H, ts->lattice, ts->T, fixed);
   sw += kinematics_->d_stress_rate_d_w_decouple(S, ts->d, ts->w,
                                                 ts->Q, H,
                                                 ts->lattice, ts->T, fixed);
 
-  History hw = kinematics_->d_history_rate_d_w(S, ts->d, ts->w, ts->Q, 
+  History hw = kinematics_->d_history_rate_d_w(S, ts->d, ts->w, ts->Q,
                                              H, ts->lattice, ts->T, fixed);
   hw += kinematics_->d_history_rate_d_w_decouple(S, ts->d, ts->w,
                                                  ts->Q, H,
@@ -537,7 +545,7 @@ Orientation SingleCrystalModel::update_rot_(Symmetric & S_np1, History & H_np1,
 }
 
 double SingleCrystalModel::calc_energy_inc_(
-    const Symmetric & D_np1, const Symmetric & D_n, 
+    const Symmetric & D_np1, const Symmetric & D_n,
     const Symmetric & S_np1, const Symmetric & S_n) const
 {
   return (S_np1 - S_n).contract(D_np1 - D_n) / 2.0;
@@ -547,7 +555,7 @@ double SingleCrystalModel::calc_work_inc_(
     const Symmetric & D_np1, const Symmetric & D_n,
     const Symmetric & S_np1, const Symmetric & S_n,
     double T_np1, double T_n, const Orientation & Q_np1,
-    const Orientation & Q_n, const History & H_np1, 
+    const Orientation & Q_n, const History & H_np1,
     const History & H_n) const
 {
   double dU = calc_energy_inc_(D_np1, D_n, S_np1, S_n);

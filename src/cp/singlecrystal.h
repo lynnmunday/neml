@@ -20,11 +20,11 @@ class SCTrialState: public TrialState {
                History & H, const Orientation & Q, const Lattice & lattice,
                double T, double dt,
                const Symmetric & s_guess, const History & h_guess,
-               const History & fixed) : 
+               const History & fixed) :
       d(d), w(w), S(S), history(H), Q(Q), lattice(lattice), T(T), dt(dt),
       s_guess(s_guess), h_guess(h_guess), fixed(fixed)
   {};
-  
+
   Symmetric d;
   Skew w;
   Symmetric S;
@@ -91,6 +91,7 @@ class SingleCrystalModel: public NEMLModel_ldi, public Solvable
   virtual int RJ(const double * const x, TrialState * ts, double * const R,
                  double * const J);
 
+  double get_current_strength(double * const hist) const;
   /// Getter/setter helpers
   Orientation get_active_orientation(double * const hist) const;
   Orientation get_active_orientation(const History & hist) const;
