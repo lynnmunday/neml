@@ -23,6 +23,7 @@ extern "C" {
   void dgecon_(const char * norm, const int & n, double * A, const int & lda, const double & anrom, double & rcond, double * work, int * lwork, int & info);
   void dgttrf_(const int & N, double * DL, double * D, double * DU, double * DU2, int * IPIV, int & INFO);
   void dgttrs_(const char * TRANS, const int & N, const int & NRHS, double * DL, double * D, double * DU, double * DU2, int * IPIV, double * B, const int & LDB, int & info);
+  void dsyev_(const char * JOBZ, const char * UPLO, const int & N, double * A, const int & LDA, double * W, double * WORK, const int & LWORK, const int & INFO);
 }
 
 namespace neml {
@@ -138,7 +139,14 @@ int solve_mat(const double * const A, int n, double * const x);
 double condition(const double * const A, int n);
 
 /// Evaluate a polynomial with Horner's method, highest order term first
-double polyval(const double * const poly, const int n, double x);
+double polyval(const std::vector<double> & poly, double x);
+
+/// Construct a polynomial with the given roots
+std::vector<double> poly_from_roots(const std::vector<double> & roots);
+
+/// Get the derivative of a polynomial
+std::vector<double> differentiate_poly(const std::vector<double> & poly,
+                                       int n = 1);
 
 /// The greatest common divisor between two numbers
 int gcd(int a, int b);
@@ -168,6 +176,25 @@ bool isclose(double a, double b);
 /// Perform A * B * A.T
 int rotate_matrix(int m, int n, const double * const A,
                   const double * const B, double * C);
+
+/// Factorial
+int fact(int n);
+
+/// Factorial as a double + cacheing
+double factorial(int n);
+
+/// Get the eigenvalues of a symmetric 3x3 matrix in Mandel notation
+int eigenvalues_sym(const double * const s, double * values);
+
+/// Get the eigenvectors of a symmetric 3x3 matrix (row major)
+int eigenvectors_sym(const double * const s, double * vectors);
+
+/// First principal invariant
+double I1(const double * const s);
+
+/// Second principal invariant
+double I2(const double * const s);
+
 }
 
 #endif // NEMLMATH_H

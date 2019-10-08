@@ -29,6 +29,70 @@ class ScalarCreepRule: public NEMLObject {
        const;
 };
 
+/// Creep rate law from Blackburn 1972
+class BlackburnMinimumCreep: public ScalarCreepRule {
+ public:
+  BlackburnMinimumCreep(std::shared_ptr<Interpolate> A, 
+                        std::shared_ptr<Interpolate> n,
+                        std::shared_ptr<Interpolate> beta,
+                        double R, double Q);
+  
+  /// String type for the object system
+  static std::string type();
+  /// Setup from a parameter set
+  static std::unique_ptr<NEMLObject> initialize(ParameterSet & params);
+  /// Return default parameters
+  static ParameterSet parameters();
+  
+  /// rate = A * (sinh(beta*s/n)^n * exp(-Q/(R*T))
+  virtual int g(double seq, double eeq, double t, double T, double & g) const;
+  /// Derivative of rate wrt effective stress
+  virtual int dg_ds(double seq, double eeq, double t, double T, double & dg)
+      const;
+  /// Derivative of rate wrt effective strain = 0
+  virtual int dg_de(double seq, double eeq, double t, double T, double & dg)
+      const;
+  /// Derivative of rate wrt temperature
+  virtual int dg_dT(double seq, double eeq, double t, double T, double & dg) 
+      const;
+  
+ private:
+  const std::shared_ptr<const Interpolate> A_, n_, beta_;
+  const double R_, Q_;
+};
+
+static Register<BlackburnMinimumCreep> regBlackburnMinimumCreep;
+
+/// Creep rate law from Swindeman 1999
+class SwindemanMinimumCreep: public ScalarCreepRule {
+ public:
+  SwindemanMinimumCreep(double C, double n, double V, double Q);
+  
+  /// String type for the object system
+  static std::string type();
+  /// Setup from a parameter set
+  static std::unique_ptr<NEMLObject> initialize(ParameterSet & params);
+  /// Return default parameters
+  static ParameterSet parameters();
+  
+  /// rate = C * S^n * exp(V*S) * exp(-Q/T)
+  virtual int g(double seq, double eeq, double t, double T, double & g) const;
+  /// Derivative of rate wrt effective stress
+  virtual int dg_ds(double seq, double eeq, double t, double T, double & dg)
+      const;
+  /// Derivative of rate wrt effective strain = 0
+  virtual int dg_de(double seq, double eeq, double t, double T, double & dg)
+      const;
+  /// Derivative of rate wrt temperature
+  virtual int dg_dT(double seq, double eeq, double t, double T, double & dg) 
+      const;
+  
+ private:
+  const double C_, n_, V_, Q_;
+};
+
+static Register<SwindemanMinimumCreep> regSwindemanMinimumCreep;
+
 /// Simple power law creep
 class PowerLawCreep: public ScalarCreepRule {
  public:

@@ -84,7 +84,16 @@ PYBIND11_MODULE(rotations, m) {
            {
             auto info = arr.request();
             if (info.ndim == 1) {
-              return new Orientation(Orientation::createRodrigues(arr2ptr<double>(arr)));
+              if (info.shape[0] == 3) {
+                return new Orientation(Orientation::createRodrigues(arr2ptr<double>(arr)));
+              }
+              else if (info.shape[0] == 4) {
+                double * ptr = arr2ptr<double>(arr);
+                return new Orientation(std::vector<double>(ptr,ptr+4));
+              }
+              else {
+                throw std::runtime_error("Initializing a quaternion from a vector requires a length 3 or 4 array");
+              }
             }
             else if (info.ndim == 2) {
               return new Orientation(Orientation::createMatrix(arr2ptr<double>(arr)));
@@ -213,11 +222,16 @@ PYBIND11_MODULE(rotations, m) {
       
       .def(py::self /= py::self)
       .def(py::self / py::self)
+
+      .def("distance", &Orientation::distance)
       ;
   
   m.def("random_orientations", &random_orientations);
   m.def("wexp", &wexp);
   m.def("wlog", &wlog);
+  m.def("distance", &distance);
+  m.def("rotate_to", &rotate_to);
+  m.def("rotate_to_family", &rotate_to_family);
 } // PYBIND11_MODULE(cpfmwk, m)
 
 } // namespace cpfmwk

@@ -336,6 +336,25 @@ class TestPoly(unittest.TestCase):
     mv  = polyval(self.poly, self.x)
     self.assertTrue(np.isclose(npv, mv))
 
+  def test_derivs(self):
+    for n in range(5):
+      p1 = np.polyder(self.poly, m = n)
+      p2 = differentiate_poly(self.poly, n)
+      self.assertTrue(np.allclose(p1,p2))
+
+  def test_problem_case(self):
+    p = np.array([-1.,  0.,  1.])
+    for n in range(4):
+      p1 = np.polyder(p, m = n)
+      p2 = differentiate_poly(p, n)
+      self.assertTrue(np.allclose(p1,p2))
+
+  def test_poly_from_roots(self):
+    p1 = np.polynomial.polynomial.polyfromroots(self.poly)[::-1]
+    p2 = poly_from_roots(self.poly)
+
+    self.assertTrue(np.allclose(p1,p2))
+
 class TestMisc(unittest.TestCase):
   def setUp(self):
     self.a1_deg = 127.0
@@ -370,4 +389,45 @@ class TestMisc(unittest.TestCase):
     self.assertTrue(nemlmath.isclose(1.0e10, 1.00001e10))
     self.assertFalse(nemlmath.isclose(1.0e-7, 1.0e-8))
 
+class TestVariousFactorial(unittest.TestCase):
+  def test_factorial(self):
+    for i in range(10):
+      self.assertTrue(np.isclose(np.math.factorial(i), factorial(i)))
 
+class TestEigenstuff(unittest.TestCase):
+  def setUp(self):
+    self.S = np.array([50.0,-25.0,100.0,30.0,-180.0,90.0])
+
+  def test_eigenvalues_sym(self):
+    vals = eigenvalues_sym(self.S)
+    tvs = la.eigvalsh(usym(self.S))
+    
+    self.assertTrue(np.allclose(np.array(vals), np.array(tvs)))
+
+  def test_eigenvectors_sym(self):
+    vecs = eigenvectors_sym(self.S)
+    tvals, tvecs = la.eigh(usym(self.S))
+    tvecs = tvecs.T
+ 
+    for nv, mv in zip(tvecs,vecs):
+      self.assertTrue(np.allclose(nv,mv) or np.allclose(nv,-mv))
+
+class TestInvariants(unittest.TestCase):
+  def setUp(self):
+    self.S = np.array([50.0,-25.0,100.0,30.0,-180.0,90.0])
+    self.SF = usym(self.S)
+    self.SF_dev = self.SF - np.trace(self.SF)/3.0 * np.eye(3)
+  
+  def test_I1(self):
+    self.assertTrue(np.isclose(np.trace(self.SF), I1(self.S)))
+
+  def test_I2(self):
+    v1 = 0.5*(np.trace(self.SF)**2.0 - np.trace(np.dot(self.SF, self.SF)))
+    self.assertTrue(np.isclose(v1, I2(self.S)))
+
+  def test_I1_dev(self):
+    self.assertTrue(np.isclose(np.trace(self.SF_dev), I1(dev_vec(self.S))))
+
+  def test_I2_dev(self):
+    v1 = 0.5*(np.trace(self.SF_dev)**2.0 - np.trace(np.dot(self.SF_dev, self.SF_dev)))
+    self.assertTrue(np.isclose(v1, I2(dev_vec(self.S))))

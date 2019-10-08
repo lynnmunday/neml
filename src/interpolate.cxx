@@ -27,11 +27,7 @@ bool Interpolate::valid() const
 PolynomialInterpolate::PolynomialInterpolate(const std::vector<double> coefs) :
     Interpolate(), coefs_(coefs)
 {
-  int n = coefs_.size();
-  deriv_.resize(n - 1);
-  for (int i = 0; i < n - 1; i++) {
-    deriv_[i] = coefs_[i] * ((double) (n - 1 - i));
-  }
+  deriv_ = differentiate_poly(coefs_);
 }
 
 std::string PolynomialInterpolate::type()
@@ -57,12 +53,12 @@ std::unique_ptr<NEMLObject> PolynomialInterpolate::initialize(ParameterSet & par
 
 double PolynomialInterpolate::value(double x) const
 {
-  return polyval(&coefs_[0], coefs_.size(), x);
+  return polyval(coefs_, x);
 }
 
 double PolynomialInterpolate::derivative(double x) const
 {
-  return polyval(&deriv_[0], deriv_.size(), x);
+  return polyval(deriv_, x);
 }
 
 
@@ -147,6 +143,82 @@ double PiecewiseLinearInterpolate::derivative(double x) const
     double y2 = values_[ind];
 
     return (y2-y1)/(x2-x1);
+  }
+}
+
+GenericPiecewiseInterpolate::GenericPiecewiseInterpolate(
+    std::vector<double> points,
+    std::vector<std::shared_ptr<Interpolate>> functions) :
+      Interpolate(), points_(points), functions_(functions)
+{
+  // Check if sorted
+  if (not std::is_sorted(points.begin(), points.end())) {
+    valid_ = false; 
+  }
+
+  if (points.size() != (functions.size()+1)) {
+    valid_ = false;
+  }
+}
+
+std::string GenericPiecewiseInterpolate::type()
+{
+  return "GenericPiecewiseInterpolate";
+}
+
+ParameterSet GenericPiecewiseInterpolate::parameters()
+{
+  ParameterSet pset(GenericPiecewiseInterpolate::type());
+
+  pset.add_parameter<std::vector<double>>("points");
+  pset.add_parameter<std::vector<NEMLObject>>("functions");
+
+  return pset;
+}
+
+std::unique_ptr<NEMLObject> GenericPiecewiseInterpolate::initialize(ParameterSet & params)
+{
+  return neml::make_unique<GenericPiecewiseInterpolate>(
+      params.get_parameter<std::vector<double>>("points"),
+      params.get_object_parameter_vector<Interpolate>("functions")
+      ); 
+}
+
+double GenericPiecewiseInterpolate::value(double x) const
+{
+  if (x <= points_.front()) {
+    return functions_[0]->value(x);
+  }
+  else if (x >= points_.back()) {
+    return functions_.back()->value(x);
+  }
+  else {
+    auto it = points_.begin();
+    for (; it != points_.end(); ++it) {
+      if (x <= *it) break;
+    }
+    size_t ind = std::distance(points_.begin(), it);
+
+    return functions_[ind]->value(x);
+  }
+}
+
+double GenericPiecewiseInterpolate::derivative(double x) const
+{
+  if (x <= points_.front()) {
+    return functions_[0]->derivative(x);
+  }
+  else if (x >= points_.back()) {
+    return functions_.back()->derivative(x);
+  }
+  else {
+    auto it = points_.begin();
+    for (; it != points_.end(); ++it) {
+      if (x <= *it) break;
+    }
+    size_t ind = std::distance(points_.begin(), it);
+
+    return functions_[ind]->derivative(x);
   }
 }
 
@@ -274,6 +346,45 @@ double ConstantInterpolate::value(double x) const
 double ConstantInterpolate::derivative(double x) const
 {
   return 0.0;
+}
+
+ExpInterpolate::ExpInterpolate(double A, double B) :
+    Interpolate(), A_(A), B_(B)
+{
+
+}
+
+std::string ExpInterpolate::type()
+{
+  return "ExpInterpolate";
+}
+
+ParameterSet ExpInterpolate::parameters()
+{
+  ParameterSet pset(ExpInterpolate::type());
+
+  pset.add_parameter<double>("A");
+  pset.add_parameter<double>("B");
+
+  return pset;
+}
+
+std::unique_ptr<NEMLObject> ExpInterpolate::initialize(ParameterSet & params)
+{
+  return neml::make_unique<ExpInterpolate>(
+      params.get_parameter<double>("A"),
+      params.get_parameter<double>("B")
+      ); 
+}
+
+double ExpInterpolate::value(double x) const
+{
+  return A_*exp(B_/x);
+}
+
+double ExpInterpolate::derivative(double x) const
+{
+  return -A_ * B_ * exp(B_ / x) / (x*x);
 }
 
 MTSShearInterpolate::MTSShearInterpolate(double V0, double D, double T0) :

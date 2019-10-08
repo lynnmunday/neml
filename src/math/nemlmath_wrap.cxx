@@ -551,16 +551,48 @@ PYBIND11_MODULE(nemlmath, m) {
           return condition(arr2ptr<double>(A), A.request().shape[1]);
         }, "Calculate the approximate condition number of A.");
 
-   m.def("polyval",
-        [](py::array_t<double, py::array::c_style> poly, double x) -> double
-        {
-          if (poly.request().ndim != 1) {
-            throw LinalgError("poly is not a vector!");
-          }
+   m.def("polyval", &polyval,
+         "Evaluate a polynomial at x, highest order term first.");
 
-          return polyval(arr2ptr<double>(poly), poly.request().shape[0], x);
+   m.def("poly_from_roots", &poly_from_roots, 
+         "Setup a polynomial from roots");
 
-        }, "Evaluate a polynomial at x, highest order term first.");
+   m.def("differentiate_poly", &differentiate_poly, 
+         "Differentiate a polynomial", py::arg("poly"), py::arg("n") = 1);
+
+   m.def("eigenvalues_sym",
+         [](py::array_t<double, py::array::c_style> s) -> std::tuple<double, double, double>
+         {
+           double vals[3];
+
+           int ier = eigenvalues_sym(arr2ptr<double>(s), vals);
+           py_error(ier);
+
+           return std::make_tuple(vals[0],vals[1],vals[2]);
+         }, "Eigenvalues of a symmetric matrix.");
+
+   m.def("eigenvectors_sym",
+         [](py::array_t<double, py::array::c_style> s) -> py::array_t<double>
+         {
+           auto V = alloc_mat<double>(3,3);
+           
+           int ier = eigenvectors_sym(arr2ptr<double>(s), arr2ptr<double>(V));
+           py_error(ier);
+
+           return V;
+         }, "Eigenvectors of a symmetric matrix.");
+
+   m.def("I1",
+         [](py::array_t<double, py::array::c_style> s) -> double
+         {
+           return I1(arr2ptr<double>(s));
+         }, "First principal invariant.");
+
+   m.def("I2",
+         [](py::array_t<double, py::array::c_style> s) -> double
+         {
+          return I2(arr2ptr<double>(s));
+         }, "Second principal invariant.");
 
    m.def("dgttrf",
          [](py::array_t<double, py::array::c_style> DL, py::array_t<double, py::array::c_style> D, py::array_t<double, py::array::c_style> DU) ->
@@ -675,6 +707,8 @@ PYBIND11_MODULE(nemlmath, m) {
 
           return C; 
         }, "A * B * A.T");
+  m.def("fact", &fact);
+  m.def("factorial", &factorial);
 }
 
 } // namespace neml

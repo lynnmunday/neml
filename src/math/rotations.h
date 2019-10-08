@@ -200,6 +200,9 @@ class Orientation: public Quaternion {
   RankFour apply(const RankFour & a) const;
   SymSym apply(const SymSym & a) const;
 
+  /// Geodesic distance
+  double distance(const Orientation & other) const;
+
  private:
   void normalize_();
   static void to_kocks_(double a, double b, double c, double & oa, double & ob,
@@ -225,6 +228,15 @@ Orientation wexp(const Skew & w);
 
 /// Inverse exponential map of a quaternion to a skew tensor in my convention
 Skew wlog(const Orientation & q);
+
+/// Geodesic distance
+double distance(const Orientation & q1, const Orientation & q2);
+
+/// Arbitrary rotation from a to b
+Orientation rotate_to(const Vector & a, const Vector & b);
+
+/// Family of rotations from a to b parameterized by an angle
+Orientation rotate_to_family(const Vector & a, const Vector & b, double ang);
 
 } // namespace neml
 
