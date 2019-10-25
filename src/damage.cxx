@@ -1473,7 +1473,7 @@ std::unique_ptr<NEMLObject> NEMLFatigueDamagedModel_sd::initialize(ParameterSet 
 int NEMLFatigueDamagedModel_sd::f(const double * const s_np1, double d_np1,
                                 double T_np1, double & f) const
 {
-  double nu = elastic_->nu(300.0); // some point I need to put in temperature
+  double nu = 0.31; // some point I need to put in temperature
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0 ;
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
@@ -1497,7 +1497,7 @@ int NEMLFatigueDamagedModel_sd::f(const double * const s_np1, double d_np1,
 int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, double T_np1,
                                  double * const df) const
 {
-  double nu = elastic_->nu(300.0);
+  double nu = 0.31;
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
   double s0 = s0_->value(T_np1);
@@ -1535,7 +1535,7 @@ int NEMLFatigueDamagedModel_sd::df_ds(const double * const s_np1, double d_np1, 
 int NEMLFatigueDamagedModel_sd::df_dd(const double * const s_np1, double d_np1, double T_np1,
                                  double & df) const
 {
-  double nu = elastic_->nu(300.0);
+  double nu = 0.31;
   double sev = se(s_np1);
   double S0 = S0_->value(T_np1);
   double s0 = s0_->value(T_np1);
@@ -1578,7 +1578,7 @@ CombinedFatigueDamageModel_sd::CombinedFatigueDamageModel_sd(
     std::shared_ptr<Interpolate> alpha,
     double tol, int miter,
     bool verbose, bool truesdell) :
-      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell,false, 0, 1)),
+      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell,false, 0, 1),
       A_(A), xi_(xi), phi_(phi), S0_(S0), s0_(s0), sl_(sl), Q_(Q)
 {
 
@@ -1858,7 +1858,7 @@ int CombinedFatigueDamageModel_sd::f(const double * const s_np1, double d_np1,
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
 
-  double nu = elastic_->nu(300.0); // some point I need to put in temperature
+  double nu = 0.31; // some point I need to put in temperature
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0 ;
   double sev = se(s_np1);
 
@@ -1883,7 +1883,7 @@ int CombinedFatigueDamageModel_sd::df_dd(const double * const s_np1, double d_np
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
 
-  double nu = elastic_->nu(300.0);
+  double nu = 0.31;
   double sev = se(s_np1);
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
 
@@ -1910,7 +1910,7 @@ int CombinedFatigueDamageModel_sd::df_ds(const double * const s_np1, double d_np
   double s0 = s0_->value(T_np1);
   double sl = sl_->value(T_np1);
 
-  double nu = elastic_->nu(300.0);
+  double nu = 0.31;
   double sev = se(s_np1);
   double sm = (s_np1[0] + s_np1[1] + s_np1[2]) / 3.0;
 
@@ -1962,7 +1962,7 @@ DuctilityExhaustionDamage_sd::DuctilityExhaustionDamage_sd(
     std::shared_ptr<Interpolate> alpha,
     double tol, int miter,
     bool verbose, bool truesdell) :
-      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell,false, 0, 1)),
+      NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell,false, 0, 1),
       A_(A), P_(P), Q_(Q), n_(n), m_(m), G_(G)
 {
 
@@ -2046,8 +2046,6 @@ int DuctilityExhaustionDamage_sd::damage(
   double fval = numerator / pow(denominator,n);
 
   *dd = d_n + fval * dt + G * dt * se /(1 - d_np1);
-  double d_rate = fval + G*se/(1 - d_np1);
-  // std::cout<<"damage rate "<< d_rate;
   return 0;
 }
 

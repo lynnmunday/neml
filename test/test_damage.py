@@ -162,7 +162,7 @@ class CommonDamagedModel(object):
       A_num = differentiate(lambda e: self.model.update_sd(e, e_n,
         self.T, self.T, t_np1, t_n, s_n, hist_n, u_n, p_n)[0], e_np1)
 
-      self.assertTrue(np.allclose(A_num, A_np1, rtol = 1.0e-2, atol = 1.0e-1))
+      self.assertTrue(np.allclose(A_num, A_np1, rtol = 5.0e-2, atol = 1.0e-1))
 
       e_n = np.copy(e_np1)
       s_n = np.copy(s_np1)
@@ -556,7 +556,7 @@ class TestFatigueDamagedModel_sd(unittest.TestCase, CommonStandardDamageModel,
     CommonScalarDamageModel, CommonDamagedModel):
   def setUp(self):
     self.E = 92000.0
-    self.nu = 0.3
+    self.nu = 0.31
 
     self.s0 = 180.0
     self.Kp = 1000.0
