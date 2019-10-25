@@ -462,6 +462,7 @@ class CombinedFatigueDamageModel_sd: public NEMLScalarDamagedModel_sd {
                             std::shared_ptr<Interpolate> S0,
                             std::shared_ptr<Interpolate> s0,
                             std::shared_ptr<Interpolate> sl,
+                            std::shared_ptr<Interpolate> Q,
                             std::shared_ptr<NEMLModel_sd> base,
                             std::shared_ptr<Interpolate> alpha,
                             double tol, int miter,
@@ -525,6 +526,7 @@ class CombinedFatigueDamageModel_sd: public NEMLScalarDamagedModel_sd {
   std::shared_ptr<Interpolate> S0_;
   std::shared_ptr<Interpolate> s0_;
   std::shared_ptr<Interpolate> sl_;
+  std::shared_ptr<Interpolate> Q_;
 };
 
 static Register<CombinedFatigueDamageModel_sd> regCombinedFatigueDamageModel_sd;
@@ -539,7 +541,10 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
                             std::shared_ptr<LinearElasticModel> elastic,
                             std::shared_ptr<Interpolate> A,
                             std::shared_ptr<Interpolate> P,
-                            std::shared_ptr<Interpolate> ksi,
+                            std::shared_ptr<Interpolate> Q,
+                            std::shared_ptr<Interpolate> n,
+                            std::shared_ptr<Interpolate> m,
+                            std::shared_ptr<Interpolate> G,
                             std::shared_ptr<NEMLModel_sd> base,
                             std::shared_ptr<Interpolate> alpha,
                             double tol, int miter,
@@ -591,7 +596,10 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
  protected:
    std::shared_ptr<Interpolate> A_;
    std::shared_ptr<Interpolate> P_;
-   std::shared_ptr<Interpolate> ksi_;
+   std::shared_ptr<Interpolate> Q_;
+   std::shared_ptr<Interpolate> n_;
+   std::shared_ptr<Interpolate> m_;
+   std::shared_ptr<Interpolate> G_;
 };
 
 static Register<DuctilityExhaustionDamage_sd> regDuctilityExhaustionDamage_sd;

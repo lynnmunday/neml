@@ -179,7 +179,7 @@ PYBIND11_MODULE(damage, m) {
                                                                     {"elastic",
                                                                     "A", "xi",
                                                                     "phi",
-                                                                    "S0", "s0","sl",
+                                                                    "S0", "s0","sl","Q",
                                                                     "base"});
         }))
       ;
@@ -189,7 +189,7 @@ PYBIND11_MODULE(damage, m) {
             {
               return create_object_python<DuctilityExhaustionDamage_sd>(args, kwargs,
                                                                         {"elastic",
-                                                                        "A","P","ksi",
+                                                                        "A","P","Q","n","m","G",
                                                                         "base"});
             }))
           ;

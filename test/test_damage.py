@@ -255,13 +255,16 @@ class TestDuctilityExhaustionDamage_sd(unittest.TestCase, CommonScalarDamageMode
     self.bmodel = models.SmallStrainRateIndependentPlasticity(self.elastic,
         flow)
 
-    self.A = 1e9
-    self.P = 1.0
-    self.ksi = 1.0
+    self.A = 4.0
+    self.P = 1e4
+    self.Q = 1e3
+    self.n = 1.0
+    self.m = 2.0
+    self.G = 1e-12
 
     self.model = damage.DuctilityExhaustionDamage_sd(
         self.elastic,
-        self.A, self.P, self.ksi, self.bmodel)
+        self.A, self.P, self.Q, self.n, self.m, self.G, self.bmodel)
 
     self.stress = np.array([100,-50.0,300.0,-99,50.0,125.0])
     self.T = 100.0
