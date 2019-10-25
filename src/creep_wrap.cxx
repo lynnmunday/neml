@@ -157,6 +157,20 @@ PYBIND11_MODULE(creep, m) {
       .def("n", &PowerLawCreep::n)
     ;
 
+  py::class_<BlackburnMinimumCreep, ScalarCreepRule, std::shared_ptr<BlackburnMinimumCreep>>(m, "BlackburnMinimumCreep")
+      .def(py::init([](py::args args, py::kwargs kwargs)
+        {
+          return create_object_python<BlackburnMinimumCreep>(args, kwargs, {"A","n","beta","R","Q"});
+        }))
+    ;
+
+  py::class_<SwindemanMinimumCreep, ScalarCreepRule, std::shared_ptr<SwindemanMinimumCreep>>(m, "SwindemanMinimumCreep")
+      .def(py::init([](py::args args, py::kwargs kwargs)
+        {
+          return create_object_python<SwindemanMinimumCreep>(args, kwargs, {"C", "n", "V", "Q"});
+        }))
+    ;
+
   py::class_<RegionKMCreep, ScalarCreepRule, std::shared_ptr<RegionKMCreep>>(m, "RegionKMCreep")
       .def(py::init([](py::args args, py::kwargs kwargs)
         {
