@@ -632,6 +632,228 @@ def strain_cyclic(model, emax, R, erate, ncycles, T = 300.0, nsteps = 50,
       "t_hold_stress":np.array(t_hold_stress),
       "t_hold_strain":np.array(t_hold_strain),
       "t_hold_plastic_strain":np.array(t_hold_plastic_strain)}
+def strain_cyclic_modified2(model, emax, R, erate, ncycles, T = 300.0, nsteps = 50,
+    sdir = np.array([1,0,0,0,0,0]), hold_time = None, n_hold = 25,
+    verbose = False, check_dmg = False, dtol = 0.75):
+  """
+    Strain controlled cyclic test.
+
+    Parameters:
+      emax:         maximum strain
+      R:            R = emin / emax
+      erate:        strain rate to go at
+      ncycles:      number of cycles
+      T:            temperature, default 300
+
+    Keyword Args:
+      nsteps:       number of steps per half cycle
+      sdir:         stress direction, defaults to x and tension first
+      hold_time:    if None don't hold, if scalar then hold symmetrically top/bot
+                    if an array specify different hold times for first direction
+                    (default tension) and second direction
+      n_hold:       number of steps to hold over
+      verbose:      whether to be verbose
+      check_dmg:    check to see if material damage exceeds dtol, stop the
+                    simulation when that happens
+      dtol:         damage to stop at
+
+    Returns:
+      dict:         results dictionary containing...
+
+    **Results in dictionary:**
+      ============= ========================
+      Name          Description
+      ============= ========================
+      strain:       strain in direction
+      stress:       stress in direction
+      cycles:       list of cycle numbers
+      max:          maximum stress per cycle
+      min:          minimum stress per cycle
+      mean:         mean stress per cycle
+      ============= ========================
+  """
+  # Setup
+  driver = Driver_sd(model, verbose = verbose, T_init = T)
+  emin = emax * R
+  if hold_time:
+    if np.isscalar(hold_time):
+      hold_time = [hold_time, hold_time]
+  else:
+    hold_time = [0,0]
+
+  # Setup results
+  strain = [0.0]
+  stress = [0.0]
+  time = [0.0]
+  cycles = []
+  smax = []
+  smin = []
+  smean = []
+
+  ecycle = []
+  pcycle = []
+
+  # First half cycle
+  if verbose:
+    print("Initial half cycle")
+  e_inc = emax / nsteps
+  try:
+    for i in range(nsteps):
+      if i == 0:
+        einc, ainc = driver.erate_einc_step(sdir, erate, e_inc, T)
+      else:
+        einc, ainc = driver.erate_einc_step(sdir, erate, e_inc, T, einc_guess = einc,
+            ainc_guess = ainc)
+      if check_dmg:
+        if driver.stored_int[-1][0] > dtol:
+          raise Exception("Damage check exceeded")
+      strain.append(np.dot(driver.strain_int[-1], sdir))
+      stress.append(np.dot(driver.stress_int[-1], sdir))
+      time.append(time[-1] + e_inc / erate)
+  except Exception as e:
+    print("Failed to make first half cycle")
+    raise e
+
+  # Begin cycling
+  s = 0
+  del_N = 1
+  eta_c = 0.001
+  Nc = 5
+
+  smax_interpolated = []
+  smin_interpolated = []
+  cycle_interpolated = []
+  stored_int_interpolated = []
+  strain_int_interpolated = []
+  stress_int_interpolated = []
+
+  cycle_N = 0
+  cycle_N1 = 0
+
+  state_pos = []
+  state_neg = []
+
+  stress_pos = []
+  stress_neg = []
+
+  strain_pos = []
+  strain_neg = []
+
+  smax_N = 0.0
+  smax_N1 = 0.0
+
+  smin_N = 0.0
+  smin_N1 = 0.0
+
+  same_c = 0
+  while s < ncycles:
+#    print('start of cycle',s)
+    if verbose:
+      print("Cycle %i" % s)
+    try:
+      si = len(driver.strain_int)
+      e_inc = np.abs(emin - emax) / nsteps
+      for i in range(nsteps):
+        if i == 0:
+          einc, ainc = driver.erate_einc_step(-sdir, erate, e_inc, T,
+              einc_guess = -einc, ainc_guess = -ainc)
+        else:
+          einc, ainc = driver.erate_einc_step(-sdir, erate, e_inc, T,
+              einc_guess = einc, ainc_guess = ainc)
+        if check_dmg:
+          if driver.stored_int[-1][0] > dtol:
+            raise Exception("Damage check exceeded")
+
+        strain.append(np.dot(driver.strain_int[-1], sdir))
+        stress.append(np.dot(driver.stress_int[-1], sdir))
+        time.append(time[-1] + e_inc / erate)
+
+      e_inc = np.abs(emax - emin) / nsteps
+      for i in range(nsteps):
+        if i == 0:
+          einc, ainc = driver.erate_einc_step(sdir, erate, e_inc, T,
+              einc_guess = -einc, ainc_guess = -ainc)
+        else:
+          einc, ainc = driver.erate_einc_step(sdir, erate, e_inc, T,
+              einc_guess = einc, ainc_guess = ainc)
+        if check_dmg:
+          if driver.stored_int[-1][0] > dtol:
+            raise Exception("Damage check exceeded")
+
+        strain.append(np.dot(driver.strain_int[-1], sdir))
+        stress.append(np.dot(driver.stress_int[-1], sdir))
+        time.append(time[-1] + e_inc / erate)
+
+
+      # Calculate
+      if np.isnan(max(stress[si:])) or np.isnan(min(stress[si:])):
+        break
+
+      cycles.append(s)
+      smax.append(max(stress[si:]))
+      smin.append(min(stress[si:]))
+      smean.append((smax[-1]+smin[-1])/2)
+
+      ecycle.append(driver.u_int[-1])
+      pcycle.append(driver.p_int[-1])
+
+      if s >= 1:
+        diff_maxStress = smax[-1] - smax[-2]
+        diff_minStress = smin[-1] - smin[-2]
+        if diff_maxStress > 0.0:
+            del_N_smax = min(max(int(np.floor(eta_c*np.fabs(smax[-2]/diff_maxStress ))),1),Nc,ncycles-s)
+            del_N = min(del_N_smax,Nc) #min(del_N_smin,del_N_smax,Nc)
+        elif diff_maxStress == 0.0:
+            del_N = min((ncycles - s),Nc)
+        else:
+            del_N = 1.0
+        if s > 1:
+            change_1 = abs(smax[-2] - smax[-3])/smax[-3]
+            change_2 = abs(smax[-1] - smax[-2])/smax[-2]
+            avg_change = 0.5*(change_1 + change_2)
+            if avg_change <= 1e-4:
+                same_c += 1
+            else:
+                same_c = 0
+      if (del_N > 1) and (s >= 1) and (diff_maxStress >= 0.0):
+          pos_state_N = driver.stored_int[-2*nsteps-1]
+          pos_state_N1 = driver.stored_int[-1]
+          pos_stress_N = driver.stress_int[-2*nsteps - 1]
+          pos_stress_N1 = driver.stress_int[-1]
+          pos_strain_N = driver.strain_int[-2*nsteps - 1]
+          pos_strain_N1 = driver.strain_int[-1]
+          new_state = pos_state_N1 + del_N*(pos_state_N1 - pos_state_N)
+          new_strain = pos_strain_N1 + del_N*(pos_strain_N1 - pos_strain_N)
+          new_stress = pos_stress_N1 + del_N*(pos_stress_N1 - pos_stress_N)
+          smax_delN = smax[-1] + del_N*(smax[-1] - smax[-2])
+          smin_delN = smin[-1] + del_N*(smin[-1] - smin[-2])
+          cyc_delN = cycles[-1] + del_N
+          smax.append(smax_delN)
+          smin.append(smin_delN)
+          cycles.append(cyc_delN)
+          driver.stored_int[-1] = new_state
+          driver.strain_int[-1] = new_strain
+          driver.stress_int[-1] = new_stress
+
+      s = cycles[-1] + 1
+
+
+    except Exception as e:
+      break
+
+
+
+  # Setup and return
+  return {"cycles": np.array(cycles, dtype = int), "max": np.array(smax)}, \
+         {"smax_interpolated":smax_interpolated,
+         "smin_interpolated":smax_interpolated,
+         "cycle_interpolated":cycle_interpolated,
+         "stored_int_interpolated":stored_int_interpolated,
+         "strain_int_interpolated":strain_int_interpolated,
+         "stress_int_interpolated":stress_int_interpolated,
+         "driver_stored_int":driver.stored_int,
+         "driver_strain_int":driver.strain_int,
+         "driver_stress_int":driver.stress_int}
 
 def strain_cyclic_followup(model, emax, R, erate, ncycles,
     q = 1.0, T = 300.0, nsteps = 50,
