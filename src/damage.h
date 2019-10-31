@@ -730,6 +730,9 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
                             std::shared_ptr<Interpolate> n,
                             std::shared_ptr<Interpolate> m,
                             std::shared_ptr<Interpolate> G,
+                            std::shared_ptr<Interpolate> H,
+                            std::shared_ptr<Interpolate> xi,
+                            std::shared_ptr<Interpolate> phi,
                             std::shared_ptr<NEMLModel_sd> base,
                             std::shared_ptr<Interpolate> alpha,
                             double tol, int miter,
@@ -785,6 +788,9 @@ class DuctilityExhaustionDamage_sd: public NEMLScalarDamagedModel_sd {
    std::shared_ptr<Interpolate> n_;
    std::shared_ptr<Interpolate> m_;
    std::shared_ptr<Interpolate> G_;
+   std::shared_ptr<Interpolate> H_;
+   std::shared_ptr<Interpolate> xi_;
+   std::shared_ptr<Interpolate> phi_;
 };
 
 static Register<DuctilityExhaustionDamage_sd> regDuctilityExhaustionDamage_sd;

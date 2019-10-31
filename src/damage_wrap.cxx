@@ -173,7 +173,7 @@ PYBIND11_MODULE(damage, m) {
           return create_object_python<ModularCreepDamageModel_sd>(args, kwargs,
                                                                     {"elastic",
                                                                     "A", "xi",
-                                                                    "phi", "estress", 
+                                                                    "phi", "estress",
                                                                     "base"});
         }))
       ;
@@ -254,7 +254,7 @@ PYBIND11_MODULE(damage, m) {
             {
               return create_object_python<DuctilityExhaustionDamage_sd>(args, kwargs,
                                                                         {"elastic",
-                                                                        "A","P","Q","n","m","G",
+                                                                        "A","P","Q","n","m","G","H","xi","phi",
                                                                         "base"});
             }))
           ;

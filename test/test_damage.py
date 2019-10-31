@@ -260,11 +260,14 @@ class TestDuctilityExhaustionDamage_sd(unittest.TestCase, CommonScalarDamageMode
     self.Q = 1e3
     self.n = 1.0
     self.m = 2.0
-    self.G = 1e-12
+    self.G = 1e-4
+    self.H = 1e4
+    self.xi = 1.0
+    self.phi = 1.0
 
     self.model = damage.DuctilityExhaustionDamage_sd(
         self.elastic,
-        self.A, self.P, self.Q, self.n, self.m, self.G, self.bmodel)
+        self.A, self.P, self.Q, self.n, self.m, self.G, self.H, self.xi, self.phi, self.bmodel)
 
     self.stress = np.array([100,-50.0,300.0,-99,50.0,125.0])
     self.T = 100.0

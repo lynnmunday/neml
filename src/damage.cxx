@@ -1958,12 +1958,15 @@ DuctilityExhaustionDamage_sd::DuctilityExhaustionDamage_sd(
     std::shared_ptr<Interpolate> n,
     std::shared_ptr<Interpolate> m,
     std::shared_ptr<Interpolate> G,
+    std::shared_ptr<Interpolate> H,
+    std::shared_ptr<Interpolate> xi,
+    std::shared_ptr<Interpolate> phi,
     std::shared_ptr<NEMLModel_sd> base,
     std::shared_ptr<Interpolate> alpha,
     double tol, int miter,
     bool verbose, bool truesdell) :
       NEMLScalarDamagedModel_sd(elastic, base, alpha, tol, miter, verbose, truesdell,false, 0, 1),
-      A_(A), P_(P), Q_(Q), n_(n), m_(m), G_(G)
+      A_(A), P_(P), Q_(Q), n_(n), m_(m), G_(G), H_(H), xi_(xi), phi_(phi)
 {
 
 
@@ -1985,6 +1988,9 @@ ParameterSet DuctilityExhaustionDamage_sd::parameters()
   pset.add_parameter<NEMLObject>("n");
   pset.add_parameter<NEMLObject>("m");
   pset.add_parameter<NEMLObject>("G");
+  pset.add_parameter<NEMLObject>("H");
+  pset.add_parameter<NEMLObject>("xi");
+  pset.add_parameter<NEMLObject>("phi");
   pset.add_parameter<NEMLObject>("base");
 
   pset.add_optional_parameter<NEMLObject>("alpha",
@@ -2007,6 +2013,9 @@ std::unique_ptr<NEMLObject> DuctilityExhaustionDamage_sd::initialize(ParameterSe
       params.get_object_parameter<Interpolate>("n"),
       params.get_object_parameter<Interpolate>("m"),
       params.get_object_parameter<Interpolate>("G"),
+      params.get_object_parameter<Interpolate>("H"),
+      params.get_object_parameter<Interpolate>("xi"),
+      params.get_object_parameter<Interpolate>("phi"),
       params.get_object_parameter<NEMLModel_sd>("base"),
       params.get_object_parameter<Interpolate>("alpha"),
       params.get_parameter<double>("tol"),
@@ -2030,6 +2039,9 @@ int DuctilityExhaustionDamage_sd::damage(
   double n = n_->value(T_np1);
   double m = m_->value(T_np1);
   double G = G_->value(T_np1);
+  double H = H_->value(T_np1);
+  double xi = xi_->value(T_np1);
+  double phi = phi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -2045,7 +2057,7 @@ int DuctilityExhaustionDamage_sd::damage(
   double numerator = pow(work_rate/Q,m);
   double fval = numerator / pow(denominator,n);
 
-  *dd = d_n + fval * dt + G * dt * se /(1 - d_np1);
+  *dd = d_n + fval * dt + dt * G * pow(se/H,xi) /pow(1 - d_np1,phi);
   return 0;
 }
 
@@ -2063,6 +2075,9 @@ int DuctilityExhaustionDamage_sd::ddamage_dd(
   double m = m_->value(T_np1);
   double Q = Q_->value(T_np1);
   double G = G_->value(T_np1);
+  double H = H_->value(T_np1);
+  double xi = xi_->value(T_np1);
+  double phi = phi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -2083,7 +2098,7 @@ int DuctilityExhaustionDamage_sd::ddamage_dd(
   double dwork_ddamage = se * deps / pow(1 - d_np1,2);
 
   *dd =  (firstTerm - secondTerm) * dwork_ddamage
-          + G * se * dt * pow(1-d_np1,-2);
+          + G * pow(se/H,xi) * phi * dt * pow(1-d_np1,-phi-1);
 
   return 0;
 }
@@ -2163,6 +2178,9 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   double m = m_->value(T_np1);
   double Q = Q_->value(T_np1);
   double G = G_->value(T_np1);
+  double H = H_->value(T_np1);
+  double xi = xi_->value(T_np1);
+  double phi = phi_->value(T_np1);
 
   double se = this->se(s_np1);
   double dt = t_np1 - t_n;
@@ -2227,7 +2245,7 @@ int DuctilityExhaustionDamage_sd::ddamage_ds(
   for (int i=0; i<6; i++) dse_ds[i] *= 3.0  / (2.0 * se);
 
   for (int i=0; i<6; i++) {
-    dd[i] = dd[i] + (fval_2 * dse_ds[i]) + G * dt * dse_ds[i] /(1 - d_np1);
+    dd[i] = dd[i] + (fval_2 * dse_ds[i]) + dt * (xi/H) * G * pow(se/H,xi-1) * dse_ds[i] /pow(1 - d_np1,phi);
   }
   return 0;
 }
