@@ -126,6 +126,34 @@ class PowerLawCreep: public ScalarCreepRule {
 
 static Register<PowerLawCreep> regPowerLawCreep;
 
+/// Simple power law creep in a normalized, stable form
+class NormalizedPowerLawCreep: public ScalarCreepRule {
+ public:
+  /// Parameters: prefector A and exponent n
+  NormalizedPowerLawCreep(std::shared_ptr<Interpolate> A, std::shared_ptr<Interpolate> n);
+  
+  /// String type for the object system
+  static std::string type();
+  /// Setup from a parameter set
+  static std::unique_ptr<NEMLObject> initialize(ParameterSet & params);
+  /// Return default parameters
+  static ParameterSet parameters();
+  
+  /// rate = (seq/A)**n
+  virtual int g(double seq, double eeq, double t, double T, double & g) const;
+  /// Derivative of rate wrt effective stress
+  virtual int dg_ds(double seq, double eeq, double t, double T, double & dg)
+      const;
+  /// Derivative of rate wrt effective strain = 0
+  virtual int dg_de(double seq, double eeq, double t, double T, double & dg)
+      const;
+  
+ private:
+  const std::shared_ptr<const Interpolate> A_, n_;
+};
+
+static Register<NormalizedPowerLawCreep> regNormalizedPowerLawCreep;
+
 /// A power law type model that uses KM concepts to switch between mechanisms
 class RegionKMCreep: public ScalarCreepRule {
  public:
