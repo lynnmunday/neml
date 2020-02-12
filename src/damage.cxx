@@ -2052,7 +2052,7 @@ int DuctilityExhaustionDamage_sd::damage(
   double work = deps * se / (1 - d_np1);
   double work_rate = work / dt;
 
-// fval = (dot{w}/Q)**m / (P*dot{w} + A)**n  + G
+// fval = (dot{w}/Q)**m / (P*dot{w} + A)**n  + G(s/H)**xi / (1 - phi)**phi
   double denominator = (P * work_rate) + A;
   double numerator = pow(work_rate/Q,m);
   double fval = numerator / pow(denominator,n);
