@@ -69,7 +69,8 @@ bool ParameterSet::fully_assigned()
 void ParameterSet::resolve_objects_()
 {
   for (auto it = defered_params_.begin(); it != defered_params_.end(); ++it) {
-    params_[it->first] = Factory::Creator()->create(it->second);
+    params_[it->first]->setValue<std::shared_ptr<NEMLObject>>(Factory::Creator()->create(it->second));
+//    params_[it->first] = Factory::Creator()->create(it->second);
   }
   defered_params_.clear();
 }

@@ -32,15 +32,15 @@ ParameterSet SingleCrystalModel::parameters()
   
   pset.add_parameter<NEMLObject>("kinematics");
   pset.add_parameter<NEMLObject>("lattice");
-  pset.add_optional_parameter<NEMLObject>("initial_rotation", 
+  pset.add_optional_parameter("initial_rotation", 
                                           std::make_shared<Orientation>());
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<bool>("update_rotation", true);
-  pset.add_optional_parameter<double>("tol", 1.0e-6);
-  pset.add_optional_parameter<int>("miter", 30);
-  pset.add_optional_parameter<bool>("verbose", false);
-  pset.add_optional_parameter<int>("max_divide", 6);
+  pset.add_optional_parameter("update_rotation", true);
+  pset.add_optional_parameter("tol", 1.0e-6);
+  pset.add_optional_parameter("miter", 30);
+  pset.add_optional_parameter("verbose", false);
+  pset.add_optional_parameter("max_divide", 6);
 
   return pset;
 }

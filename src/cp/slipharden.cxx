@@ -332,7 +332,7 @@ ParameterSet VoceSlipHardening::parameters()
   pset.add_parameter<NEMLObject>("b");
   pset.add_parameter<NEMLObject>("tau_0");
 
-  pset.add_optional_parameter<NEMLObject>("k", 
+  pset.add_optional_parameter("k", 
                                     std::make_shared<ConstantInterpolate>(0));
 
   return pset;

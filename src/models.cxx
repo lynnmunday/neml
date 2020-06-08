@@ -419,7 +419,7 @@ ParameterSet SmallStrainElasticity::parameters()
 
   pset.add_parameter<NEMLObject>("elastic");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
   pset.add_optional_parameter<bool>("truesdell", true);
 
@@ -500,7 +500,7 @@ ParameterSet SmallStrainPerfectPlasticity::parameters()
   pset.add_parameter<NEMLObject>("surface");
   pset.add_parameter<NEMLObject>("ys");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
   pset.add_optional_parameter<double>("tol", 1.0e-8);
   pset.add_optional_parameter<int>("miter", 50);
@@ -763,7 +763,7 @@ ParameterSet SmallStrainRateIndependentPlasticity::parameters()
   pset.add_parameter<NEMLObject>("elastic");
   pset.add_parameter<NEMLObject>("flow");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
   pset.add_optional_parameter<bool>("truesdell", true);
 
@@ -1109,7 +1109,7 @@ ParameterSet SmallStrainCreepPlasticity::parameters()
   pset.add_parameter<NEMLObject>("plastic");
   pset.add_parameter<NEMLObject>("creep");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
   pset.add_optional_parameter<double>("tol", 1.0e-8);
   pset.add_optional_parameter<int>("miter", 50);
@@ -1368,7 +1368,7 @@ ParameterSet GeneralIntegrator::parameters()
   pset.add_parameter<NEMLObject>("elastic");
   pset.add_parameter<NEMLObject>("rule");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
   pset.add_optional_parameter<bool>("truesdell", true);
 
@@ -1690,7 +1690,7 @@ ParameterSet KMRegimeModel::parameters()
   pset.add_parameter<double>("b");
   pset.add_parameter<double>("eps0");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
 
   pset.add_optional_parameter<bool>("truesdell", true);

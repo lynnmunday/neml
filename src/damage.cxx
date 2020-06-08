@@ -307,12 +307,12 @@ ParameterSet CombinedDamageModel_sd::parameters()
   pset.add_parameter<std::vector<NEMLObject>>("models");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
-  pset.add_optional_parameter<bool>("truesdell", true);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
+  pset.add_optional_parameter("truesdell", true);
 
   return pset;
 }
@@ -453,12 +453,12 @@ ParameterSet ClassicalCreepDamageModel_sd::parameters()
   pset.add_parameter<NEMLObject>("phi");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
-  pset.add_optional_parameter<bool>("truesdell", true);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
+  pset.add_optional_parameter("truesdell", true);
 
   return pset;
 }
@@ -968,15 +968,15 @@ ParameterSet ModularCreepDamageModel_sd::parameters()
   pset.add_parameter<NEMLObject>("estress");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
-  pset.add_optional_parameter<bool>("truesdell", true);
-  pset.add_optional_parameter<bool>("ekill", false);
-  pset.add_optional_parameter<double>("dkill", 0.5);
-  pset.add_optional_parameter<double>("sfact", 100000.0);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
+  pset.add_optional_parameter("truesdell", true);
+  pset.add_optional_parameter("ekill", false);
+  pset.add_optional_parameter("dkill", 0.5);
+  pset.add_optional_parameter("sfact", 100000.0);
 
   return pset;
 }
@@ -1115,15 +1115,15 @@ ParameterSet LarsonMillerCreepDamageModel_sd::parameters()
   pset.add_parameter<NEMLObject>("estress");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
-  pset.add_optional_parameter<bool>("truesdell", true);
-  pset.add_optional_parameter<bool>("ekill", false);
-  pset.add_optional_parameter<double>("dkill", 0.5);
-  pset.add_optional_parameter<double>("sfact", 100000.0);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
+  pset.add_optional_parameter("truesdell", true);
+  pset.add_optional_parameter("ekill", false);
+  pset.add_optional_parameter("dkill", 0.5);
+  pset.add_optional_parameter("sfact", 100000.0);
 
   return pset;
 }
@@ -1444,13 +1444,13 @@ ParameterSet NEMLPowerLawDamagedModel_sd::parameters()
   pset.add_parameter<NEMLObject>("a");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
 
-  pset.add_optional_parameter<bool>("truesdell", true);
+  pset.add_optional_parameter("truesdell", true);
 
   return pset;
 }
@@ -1547,13 +1547,13 @@ ParameterSet NEMLExponentialWorkDamagedModel_sd::parameters()
   pset.add_parameter<NEMLObject>("af");
   pset.add_parameter<NEMLObject>("base");
 
-  pset.add_optional_parameter<NEMLObject>("alpha",
+  pset.add_optional_parameter("alpha",
                                           std::make_shared<ConstantInterpolate>(0.0));
-  pset.add_optional_parameter<double>("tol", 1.0e-8);
-  pset.add_optional_parameter<int>("miter", 50);
-  pset.add_optional_parameter<bool>("verbose", false);
+  pset.add_optional_parameter("tol", 1.0e-8);
+  pset.add_optional_parameter("miter", 50);
+  pset.add_optional_parameter("verbose", false);
 
-  pset.add_optional_parameter<bool>("truesdell", true);
+  pset.add_optional_parameter("truesdell", true);
 
   return pset;
 }

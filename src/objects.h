@@ -12,7 +12,6 @@
 
 #include "windows.h"
 
-#include "boost/variant.hpp"
 
 namespace neml {
 
@@ -32,6 +31,41 @@ class NEML_EXPORT NEMLObject {
   virtual ~NEMLObject() {};
 };
 
+// fixme lynn
+// https://stackoverflow.com/questions/13980157/c-class-with-template-member-variable
+class param_type
+{
+public:
+    virtual ~param_type() = default;
+    template<class T> const T& get() const;
+    template<class T> void setValue(const T& rhs);
+};
+
+template <typename T>
+class Parameter : public param_type
+{
+public:
+    Parameter(const T& rhs) :value(rhs) {}
+    const T& get() const {return value;}
+    void setValue(const T& rhs) {value=rhs;}    
+private:
+    T value;
+};
+
+template<class T> const T& param_type::get() const
+{ 
+	
+  const auto ptr = dynamic_cast<const Parameter<T>*>(this); //check for nullptr
+  return ptr->get(); 
+}
+template<class T> void param_type::setValue(const T& rhs)
+{
+  const auto ptr = dynamic_cast<Parameter<T>*>(this);  
+  return ptr->setValue(rhs);
+}
+
+// end fixme lynn
+
 // This version supports the following types of objects as parameters:
 //    double
 //    int
@@ -43,9 +77,9 @@ class NEML_EXPORT NEMLObject {
 //    vector<pair<vector<int>,vector<int>>, i.e. groups of slip systems
 
 /// This black magic lets us store parameters in a unified map
-typedef boost::variant<double, int, bool, std::vector<double>,
-        std::shared_ptr<NEMLObject>,std::vector<std::shared_ptr<NEMLObject>>,
-        std::string, list_systems> param_type;
+//typedef boost::variant<double, int, bool, std::vector<double>,
+//        std::shared_ptr<NEMLObject>,std::vector<std::shared_ptr<NEMLObject>>,
+//        std::string, list_systems> param_type2;
 /// This is the enum name we assign to each type for the "external" interfaces
 /// to use in reconstructing a type from data
 enum ParamType {
@@ -67,6 +101,21 @@ template <> constexpr ParamType GetParamType<std::vector<double>>()
 {return TYPE_VEC_DOUBLE;}
 template <> constexpr ParamType GetParamType<std::shared_ptr<NEMLObject>>()
 {return TYPE_NEML_OBJECT;}
+
+//fixme lynn  all the derived NEMLObjects
+//this won't work.  need something to set objects using base class   
+// something like https://stackoverflow.com/questions/57345481/how-can-a-template-type-be-restricted-to-a-base-class-excluding-a-subclass-of-th:
+// template <typename T, 
+//          typename std::enable_if<(std::is_base_of<A, T>::value)
+//                                   && (!std::is_base_of<B, T>::value)>::type* = nullptr>
+//class C {
+//};
+//template <> constexpr ParamType GetParamType<std::shared_ptr<Orientation>>()
+//{return TYPE_NEML_OBJECT;}
+//template <> constexpr ParamType GetParamType<std::shared_ptr<ConstantInterpolate>>()
+//{return TYPE_NEML_OBJECT;}
+//end fixme lynn
+
 template <> constexpr ParamType GetParamType<NEMLObject>()
 {return TYPE_NEML_OBJECT;}
 template <> constexpr ParamType GetParamType<std::vector<std::shared_ptr<NEMLObject>>>()
@@ -76,6 +125,7 @@ template <> constexpr ParamType GetParamType<std::vector<NEMLObject>>()
 template <> constexpr ParamType GetParamType<std::string>() {return TYPE_STRING;}
 template <> constexpr ParamType GetParamType<list_systems>()
 {return TYPE_SLIP;}
+
 
 /// Error if you ask for a parameter that an object doesn't recognize
 class NEML_EXPORT UnknownParameter: public std::exception {
@@ -140,17 +190,18 @@ class NEML_EXPORT ParameterSet {
   }
 
   /// Immediately assign an input of the right type to a parameter
-  void assign_parameter(std::string name, param_type value)
+  template<typename T>
+  void assign_parameter(std::string name, T value)
   {
     if (std::find(param_names_.begin(), param_names_.end(), name) == param_names_.end()) {
       throw UnknownParameter(type(), name);
     }
-    params_[name] = value;
+    params_[name]->setValue<T>(value);
   }
 
   /// Add a generic parameter with a default
   template<typename T>
-  void add_optional_parameter(std::string name, param_type value)
+  void add_optional_parameter(std::string name, T value)
   {
     add_parameter<T>(name);
     assign_parameter(name, value);
@@ -161,7 +212,7 @@ class NEML_EXPORT ParameterSet {
   T get_parameter(std::string name)
   {
     resolve_objects_();
-    return boost::get<T>(params_[name]);
+    return params_[name]->get<T>();
   }
 
   /// Assign a parameter set to be used to create an object later
@@ -222,11 +273,11 @@ class NEML_EXPORT ParameterSet {
 
   std::vector<std::string> param_names_;
   std::map<std::string, ParamType> param_types_;
-  std::map<std::string, param_type> params_;
+  std::map<std::string, param_type*> params_;
   std::map<std::string, ParameterSet> defered_params_;
 };
 
-/// Factory that produces NEMLObjects from ParameterSets
+/// Factory that produces NEMLObjects from ParameterSetsget
 class NEML_EXPORT Factory {
  public:
   /// Provide a valid parameter set for the object type
